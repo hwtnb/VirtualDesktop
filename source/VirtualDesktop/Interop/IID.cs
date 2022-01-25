@@ -11,40 +11,65 @@ namespace WindowsDesktop.Interop
 {
 	public static class IID
 	{
-		private static readonly Regex _osBuildRegex = new Regex(@"v_(?<build>\d{5}?)");
+		private static readonly Regex _osBuildRegex = new Regex(@"v_(?<build>\d{5}?)$");
+		private static readonly Regex _osBuildOrLaterRegex = new Regex(@"v_(?<build>\d{5}?)_or_later");
 
 		// ReSharper disable once InconsistentNaming
 		public static Dictionary<string, Guid> GetIIDs(string[] targets)
 		{
-			var known = new Dictionary<string, Guid>();
-
-			foreach (var prop in Settings.Default.Properties.OfType<SettingsProperty>())
-			{
-				if (int.TryParse(_osBuildRegex.Match(prop.Name).Groups["build"]?.ToString(), out var build)
-					&& build == ProductInfo.OSBuild)
-				{
-					foreach (var str in (StringCollection)Settings.Default[prop.Name])
-					{
-						var pair = str.Split(',');
-						if (pair.Length != 2) continue;
-
-						var @interface = pair[0];
-						if (targets.All(x => @interface != x) || known.ContainsKey(@interface)) continue;
-
-						if (!Guid.TryParse(pair[1], out var guid)) continue;
-						
-						known.Add(@interface, guid);
-					}
-
-					break;
-				}
-			}
+			var known = GetIIDsFromAppConfig(targets);
 
 			var except = targets.Except(known.Keys).ToArray();
 			if (except.Length > 0)
 			{
 				var fromRegistry = GetIIDsFromRegistry(except);
 				foreach (var kvp in fromRegistry) known.Add(kvp.Key, kvp.Value);
+			}
+
+			return known;
+		}
+
+		// ReSharper disable once InconsistentNaming
+		private static Dictionary<string, Guid> GetIIDsFromAppConfig(string[] targets)
+		{
+			var props = Settings.Default.Properties.OfType<SettingsProperty>();
+
+			foreach (var prop in props)
+			{
+				if (int.TryParse(_osBuildRegex.Match(prop.Name).Groups["build"]?.ToString(), out var build)
+					&& build == ProductInfo.OSBuild)
+				{
+					return ParseIIDsFromSettingsProperty(targets, prop);
+				}
+			}
+
+			foreach (var prop in props)
+			{
+				if (int.TryParse(_osBuildOrLaterRegex.Match(prop.Name).Groups["build"]?.ToString(), out var laterBuild)
+					&& laterBuild <= ProductInfo.OSBuild)
+				{
+					return ParseIIDsFromSettingsProperty(targets, prop);
+				}
+			}
+
+			return new Dictionary<string, Guid>();
+		}
+
+		// ReSharper disable once InconsistentNaming
+		private static Dictionary<string, Guid> ParseIIDsFromSettingsProperty(string[] targets, SettingsProperty prop)
+		{
+			var known = new Dictionary<string, Guid>();
+			foreach (var str in (StringCollection)Settings.Default[prop.Name])
+			{
+				var pair = str.Split(',');
+				if (pair.Length != 2) continue;
+
+				var @interface = pair[0];
+				if (targets.All(x => @interface != x) || known.ContainsKey(@interface)) continue;
+
+				if (!Guid.TryParse(pair[1], out var guid)) continue;
+
+				known.Add(@interface, guid);
 			}
 
 			return known;
