@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Threading;
 using WindowsDesktop.Internal;
 using WindowsDesktop.Properties;
@@ -93,6 +94,11 @@ namespace WindowsDesktop.Interop
 			{
 				base.Show();
 				this._explorerRestartedMessage = NativeMethods.RegisterWindowMessage("TaskbarCreated");
+
+				var filterStatus = new CHANGEFILTERSTRUCT();
+				filterStatus.cbSize = (uint)Marshal.SizeOf(filterStatus);
+				filterStatus.ExtStatus = MessageFilterInfo.MSGFLTINFO_NONE;
+				NativeMethods.ChangeWindowMessageFilterEx(this.Handle, this._explorerRestartedMessage, (uint)MessageFilter.MSGFLT_ALLOW, ref filterStatus);
 			}
 
 			protected override IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
