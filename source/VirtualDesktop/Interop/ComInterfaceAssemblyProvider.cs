@@ -7,7 +7,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using WindowsDesktop.Properties;
 
-#if NET472
+#if NETFRAMEWORK
 using Microsoft.CSharp;
 using System.CodeDom.Compiler;
 #else
@@ -137,7 +137,7 @@ namespace WindowsDesktop.Interop
 
 			if (!dir.Exists) dir.Create();
 
-#if NET472
+#if NETFRAMEWORK
 			using (var provider = new CSharpCodeProvider())
 			{
 				var path = Path.Combine(dir.FullName, string.Format(_assemblyName, ProductInfo.OSBuild));
