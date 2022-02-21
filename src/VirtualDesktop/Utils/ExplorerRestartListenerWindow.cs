@@ -1,4 +1,5 @@
-﻿using WindowsDesktop.Interop;
+﻿using System.Runtime.InteropServices;
+using WindowsDesktop.Interop;
 
 namespace WindowsDesktop.Utils;
 
@@ -17,6 +18,11 @@ internal class ExplorerRestartListenerWindow : TransparentWindow
     {
         base.Show();
         this._explorerRestartedMessage = PInvoke.RegisterWindowMessage("TaskbarCreated");
+
+        var filterStatus = new CHANGEFILTERSTRUCT();
+        filterStatus.cbSize = (uint)Marshal.SizeOf(filterStatus);
+        filterStatus.ExtStatus = MessageFilterInfo.MSGFLTINFO_NONE;
+        PInvoke.ChangeWindowMessageFilterEx(this.Handle, this._explorerRestartedMessage, MessageFilter.MSGFLT_ALLOW, ref filterStatus);
     }
 
     protected override IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
