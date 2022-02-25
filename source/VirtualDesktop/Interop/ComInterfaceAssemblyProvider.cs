@@ -63,13 +63,23 @@ namespace WindowsDesktop.Interop
 					if (int.TryParse(_assemblyRegex.Match(file.Name).Groups["build"]?.ToString(), out var build)
 						&& build == ProductInfo.OSBuild)
 					{
-						var name = AssemblyName.GetAssemblyName(file.FullName);
-						if (name.Version >= _requireVersion)
+						try
 						{
-							System.Diagnostics.Debug.WriteLine($"Assembly found: {file.FullName}");
+							var name = AssemblyName.GetAssemblyName(file.FullName);
+							if (name.Version >= _requireVersion)
+							{
+								System.Diagnostics.Debug.WriteLine($"Assembly found: {file.FullName}");
 #if !DEBUG
-							return Assembly.LoadFile(file.FullName);
+								return Assembly.LoadFile(file.FullName);
 #endif
+							}
+						}
+						catch (Exception ex)
+						{
+							System.Diagnostics.Debug.WriteLine("Failed to load assembly: ");
+							System.Diagnostics.Debug.WriteLine(ex);
+
+							File.Delete(file.FullName);
 						}
 					}
 				}
@@ -133,9 +143,11 @@ namespace WindowsDesktop.Interop
 
 		private Assembly Compile(IEnumerable<string> sources)
 		{
-			var dir = new DirectoryInfo(this._assemblyDirectoryPath);
+			try
+			{
+				var dir = new DirectoryInfo(this._assemblyDirectoryPath);
 
-			if (!dir.Exists) dir.Create();
+				if (!dir.Exists) dir.Create();
 
 #if NETFRAMEWORK
 			using (var provider = new CSharpCodeProvider())
@@ -150,44 +162,49 @@ namespace WindowsDesktop.Interop
 				cp.ReferencedAssemblies.Add("System.dll");
 				cp.ReferencedAssemblies.Add(Assembly.GetExecutingAssembly().Location);
 
-				var result = provider.CompileAssemblyFromSource(cp, sources.ToArray());
-				if (result.Errors.Count > 0) 
-				{
-					var nl = Environment.NewLine;
-					var message = $"Failed to compile COM interfaces assembly.{nl}{string.Join(nl, result.Errors.OfType<CompilerError>().Select(x => $"  {x}"))}";
+					var result = provider.CompileAssemblyFromSource(cp, sources.ToArray());
+					if (result.Errors.Count > 0) 
+					{
+						var nl = Environment.NewLine;
+						var message = $"Failed to compile COM interfaces assembly.{nl}{string.Join(nl, result.Errors.OfType<CompilerError>().Select(x => $"  {x}"))}";
 
-					throw new Exception(message);
+						throw new Exception(message);
+					}
+
+					System.Diagnostics.Debug.WriteLine($"Assembly compiled: {path}");
+					return result.CompiledAssembly;
+				}
+#else
+				var path = Path.Combine(dir.FullName, string.Format(_assemblyName, ProductInfo.OSBuild));
+				var syntaxTrees = sources.Select(x => SyntaxFactory.ParseSyntaxTree(x));
+				var references = AppDomain.CurrentDomain.GetAssemblies()
+					.Concat(new[] { Assembly.GetExecutingAssembly(), })
+					.Select(x => x.Location)
+					.Select(x => MetadataReference.CreateFromFile(x));
+				var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
+				var compilation = CSharpCompilation.Create(_assemblyName)
+					.WithOptions(options)
+					.WithReferences(references)
+					.AddSyntaxTrees(syntaxTrees);
+
+				var result = compilation.Emit(path);
+				if (result.Success)
+				{
+					return AssemblyLoadContext.Default.LoadFromAssemblyPath(path);
 				}
 
-				System.Diagnostics.Debug.WriteLine($"Assembly compiled: {path}");
-				return result.CompiledAssembly;
-			}
-#else
-			var path = Path.Combine(dir.FullName, string.Format(_assemblyName, ProductInfo.OSBuild));
-			var syntaxTrees = sources.Select(x => SyntaxFactory.ParseSyntaxTree(x));
-			var references = AppDomain.CurrentDomain.GetAssemblies()
-				.Concat(new[] { Assembly.GetExecutingAssembly(), })
-				.Select(x => x.Location)
-				.Select(x => MetadataReference.CreateFromFile(x));
-			var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
-			var compilation = CSharpCompilation.Create(_assemblyName)
-				.WithOptions(options)
-				.WithReferences(references)
-				.AddSyntaxTrees(syntaxTrees);
+				File.Delete(path);
 
-			var result = compilation.Emit(path);
-			if (result.Success)
-			{
-				return AssemblyLoadContext.Default.LoadFromAssemblyPath(path);
-			}
+				var nl = Environment.NewLine;
+				var message = $"Failed to compile COM interfaces assembly.{nl}{string.Join(nl, result.Diagnostics.Select(x => $"  {x.GetMessage()}"))}";
 
-			File.Delete(path);
-
-			var nl = Environment.NewLine;
-			var message = $"Failed to compile COM interfaces assembly.{nl}{string.Join(nl, result.Diagnostics.Select(x => $"  {x.GetMessage()}"))}";
-
-			throw new Exception(message);
+				throw new Exception(message);
 #endif
+			}
+			finally
+			{
+				GC.Collect();
+			}
 		}
 	}
 }
