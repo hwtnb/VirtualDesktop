@@ -12,7 +12,7 @@ namespace WindowsDesktop.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.0.3.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.1.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -80,9 +80,9 @@ namespace WindowsDesktop.Properties {
   <string>IVirtualDesktopNotificationService,{0cd45e71-d927-4f15-8b0a-8fef525337bf} </string>
   <string>IVirtualDesktopPinnedApps,{4ce81583-1e4c-4632-a621-07a53543148f} </string>
 </ArrayOfString>")]
-        public global::System.Collections.Specialized.StringCollection v_22000 {
+        public global::System.Collections.Specialized.StringCollection v_22000_or_later {
             get {
-                return ((global::System.Collections.Specialized.StringCollection)(this["v_22000"]));
+                return ((global::System.Collections.Specialized.StringCollection)(this["v_22000_or_later"]));
             }
         }
     }
