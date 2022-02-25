@@ -20,7 +20,7 @@ namespace WindowsDesktop.Interop
 
 		void CurrentVirtualDesktopChanged(IVirtualDesktop pDesktopOld, IVirtualDesktop pDesktopNew);
 		
-		void VirtualDesktopRenamed(IVirtualDesktop pDesktop, [MarshalAs(UnmanagedType.HString)] string chName);
+		void VirtualDesktopRenamed(IVirtualDesktop pDesktop, HString chName);
 	}
 
 	public class VirtualDesktopNotificationListener2 : VirtualDesktopNotification, IVirtualDesktopNotification, IVirtualDesktopNotification2
@@ -55,7 +55,7 @@ namespace WindowsDesktop.Interop
 			this.CurrentVirtualDesktopChangedCore(pDesktopOld, pDesktopNew);
 		}
 
-		public void VirtualDesktopRenamed(IVirtualDesktop pDesktop, [MarshalAs(UnmanagedType.HString)] string chName)
+		public void VirtualDesktopRenamed(IVirtualDesktop pDesktop, HString chName)
 		{
 			this.VirtualDesktopRenamedCore(pDesktop, chName);
 		}

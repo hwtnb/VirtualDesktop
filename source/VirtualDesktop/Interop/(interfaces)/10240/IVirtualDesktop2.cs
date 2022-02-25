@@ -14,8 +14,7 @@ namespace WindowsDesktop.Interop
 
 		Guid GetID();
 
-		[return: MarshalAs(UnmanagedType.HString)]
-		string GetName();
+		HString GetName();
 	}
 
 	// see also:

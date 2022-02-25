@@ -68,14 +68,14 @@ namespace WindowsDesktop.Interop
 		private VirtualDesktop GetDesktop(object[] parameters = null, [CallerMemberName] string methodName = "")
 			=> VirtualDesktopCache.GetOrCreate(this.Invoke<object>(parameters, methodName));
 
-		public override void SetDesktopName(VirtualDesktop desktop, string name)
+		public override void SetDesktopName(VirtualDesktop desktop, HString name)
 		{
 			if (this.ComVersion < 2) throw new PlatformNotSupportedException("This Windows 10 version is not supported.");
 
 			this.Invoke(Args(desktop.ComObject, name));
 		}
 
-		public override void SetDesktopWallpaper(VirtualDesktop desktop, string path)
+		public override void SetDesktopWallpaper(VirtualDesktop desktop, HString path)
 		{
 			throw new PlatformNotSupportedException("This Windows 10 version is not supported.");
 		}
