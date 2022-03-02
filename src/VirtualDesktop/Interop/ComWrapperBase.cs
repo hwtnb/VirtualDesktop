@@ -44,6 +44,15 @@ public abstract class ComWrapperBase<TInterface>
         this.ComObject = comObject;
     }
 
+    private protected ComWrapperBase(ComInterfaceAssembly assembly, object comObject, int version)
+    {
+        this.ComInterfaceAssembly = assembly;
+        this.ComInterfaceType = (version > 1)
+            ? assembly.GetType($"{typeof(TInterface).Name}{version}")
+            : assembly.GetType(typeof(TInterface).Name);
+        this.ComObject = comObject;
+    }
+
     protected static object?[] Args(params object?[] args)
         => args;
 

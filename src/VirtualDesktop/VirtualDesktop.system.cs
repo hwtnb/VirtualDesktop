@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using WindowsDesktop.Interop;
 using WindowsDesktop.Interop.Build10240;
+using WindowsDesktop.Interop.Build19041;
 using WindowsDesktop.Interop.Build22000;
 using WindowsDesktop.Interop.Proxy;
 using WindowsDesktop.Properties;
@@ -36,6 +37,7 @@ partial class VirtualDesktop
         _provider = Environment.OSVersion.Version.Build switch
         {
             >= 22000 => new VirtualDesktopProvider22000(),
+            >= 19041 => new VirtualDesktopProvider19041(),
             >= 10240 => new VirtualDesktopProvider10240(),
             _ => new VirtualDesktopProvider.NotSupported()
         };

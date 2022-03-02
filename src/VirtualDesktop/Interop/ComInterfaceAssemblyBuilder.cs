@@ -109,6 +109,7 @@ internal class ComInterfaceAssemblyBuilder
             var interfaceName = Path.GetFileNameWithoutExtension(name).Split('.').LastOrDefault();
             if (interfaceName != null
                 && interfaceNames.Contains(interfaceName)
+                && iids.ContainsKey(interfaceName)
                 && int.TryParse(_buildNumberRegex.Match(name).Groups["build"].ToString(), out var build))
             {
                 if (interfaceSourceFiles.TryGetValue(interfaceName, out var sourceFiles) == false)
