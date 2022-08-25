@@ -12,7 +12,7 @@ namespace WindowsDesktop.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.0.3.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.3.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -20,6 +20,27 @@ namespace WindowsDesktop.Properties {
         public static Settings Default {
             get {
                 return defaultInstance;
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute(@"<?xml version=""1.0"" encoding=""utf-16""?>
+<ArrayOfString xmlns:xsd=""http://www.w3.org/2001/XMLSchema"" xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"">
+  <string>IApplicationView,{372E1D3B-38D3-42E4-A15B-8AB2B178F513}</string>
+  <string>IApplicationViewCollection,{1841C6D7-4F9D-42C0-AF41-8747538F10E5} </string>
+  <string>IObjectArray,{92CA9DCD-5622-4BBA-A805-5E9F541BD8C9} </string>
+  <string>IServiceProvider,{6D5140C1-7436-11CE-8034-00AA006009FA} </string>
+  <string>IVirtualDesktop,{536D3495-B208-4CC9-AE26-DE8111275BF8} </string>
+  <string>IVirtualDesktopManager,{A5CD92FF-29BE-454C-8D04-D82879FB3F1B} </string>
+  <string>IVirtualDesktopManagerInternal,{88846798-1611-4D18-946B-4A67BFF58C1B} </string>
+  <string>IVirtualDesktopNotification,{CD403E52-DEED-4C13-B437-B98380F2B1E8} </string>
+  <string>IVirtualDesktopNotificationService,{0CD45E71-D927-4F15-8B0A-8FEF525337BF} </string>
+  <string>IVirtualDesktopPinnedApps,{4CE81583-1E4C-4632-A621-07A53543148F} </string>
+</ArrayOfString>")]
+        public global::System.Collections.Specialized.StringCollection v_25158_or_later {
+            get {
+                return ((global::System.Collections.Specialized.StringCollection)(this["v_25158_or_later"]));
             }
         }
         

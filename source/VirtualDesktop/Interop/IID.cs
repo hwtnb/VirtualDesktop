@@ -43,7 +43,7 @@ namespace WindowsDesktop.Interop
 				}
 			}
 
-			foreach (var prop in props)
+			foreach (var prop in props.OrderByDescending(p => p.Name))
 			{
 				if (int.TryParse(_osBuildOrLaterRegex.Match(prop.Name).Groups["build"]?.ToString(), out var laterBuild)
 					&& laterBuild <= ProductInfo.OSBuild)
