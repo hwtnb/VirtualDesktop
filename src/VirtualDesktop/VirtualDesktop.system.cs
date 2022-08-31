@@ -8,6 +8,7 @@ using WindowsDesktop.Interop;
 using WindowsDesktop.Interop.Build10240;
 using WindowsDesktop.Interop.Build22000;
 using WindowsDesktop.Interop.Build22449;
+using WindowsDesktop.Interop.Build25158;
 using WindowsDesktop.Interop.Proxy;
 using WindowsDesktop.Properties;
 using WindowsDesktop.Utils;
@@ -36,6 +37,7 @@ partial class VirtualDesktop
     {
         _provider = Environment.OSVersion.Version.Build switch
         {
+            >= 25158 => new VirtualDesktopProvider25158(),
             >= 22449 => new VirtualDesktopProvider22449(),
             >= 22000 => new VirtualDesktopProvider22000(),
             >= 10240 => new VirtualDesktopProvider10240(),

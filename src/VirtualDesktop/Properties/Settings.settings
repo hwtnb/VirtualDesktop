@@ -47,5 +47,20 @@
   &lt;string&gt;IVirtualDesktopPinnedApps,{4ce81583-1e4c-4632-a621-07a53543148f} &lt;/string&gt;
 &lt;/ArrayOfString&gt;</Value>
     </Setting>
+    <Setting Name="v_25158_or_later" Type="System.Collections.Specialized.StringCollection" Scope="Application">
+      <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;ArrayOfString xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"&gt;
+  &lt;string&gt;IApplicationView,{372e1d3b-38d3-42e4-a15b-8ab2b178f513} &lt;/string&gt;
+  &lt;string&gt;IApplicationViewCollection,{1841c6d7-4f9d-42c0-af41-8747538f10e5} &lt;/string&gt;
+  &lt;string&gt;IObjectArray,{92CA9DCD-5622-4BBA-A805-5E9F541BD8C9} &lt;/string&gt;
+  &lt;string&gt;IServiceProvider,{6D5140C1-7436-11CE-8034-00AA006009FA} &lt;/string&gt;
+  &lt;string&gt;IVirtualDesktop,{536d3495-b208-4cc9-ae26-de8111275bf8} &lt;/string&gt;
+  &lt;string&gt;IVirtualDesktopManager,{a5cd92ff-29be-454c-8d04-d82879fb3f1b} &lt;/string&gt;
+  &lt;string&gt;IVirtualDesktopManagerInternal,{88846798-1611-4d18-946b-4a67bff58c1b} &lt;/string&gt;
+  &lt;string&gt;IVirtualDesktopNotification,{cd403e52-deed-4c13-b437-b98380f2b1e8} &lt;/string&gt;
+  &lt;string&gt;IVirtualDesktopNotificationService,{0cd45e71-d927-4f15-8b0a-8fef525337bf} &lt;/string&gt;
+  &lt;string&gt;IVirtualDesktopPinnedApps,{4ce81583-1e4c-4632-a621-07a53543148f} &lt;/string&gt;
+&lt;/ArrayOfString&gt;</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

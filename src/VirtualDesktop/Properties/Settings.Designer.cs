@@ -85,5 +85,26 @@ namespace WindowsDesktop.Properties {
                 return ((global::System.Collections.Specialized.StringCollection)(this["v_22000_or_later"]));
             }
         }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute(@"<?xml version=""1.0"" encoding=""utf-16""?>
+<ArrayOfString xmlns:xsd=""http://www.w3.org/2001/XMLSchema"" xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"">
+  <string>IApplicationView,{372e1d3b-38d3-42e4-a15b-8ab2b178f513} </string>
+  <string>IApplicationViewCollection,{1841c6d7-4f9d-42c0-af41-8747538f10e5} </string>
+  <string>IObjectArray,{92CA9DCD-5622-4BBA-A805-5E9F541BD8C9} </string>
+  <string>IServiceProvider,{6D5140C1-7436-11CE-8034-00AA006009FA} </string>
+  <string>IVirtualDesktop,{536d3495-b208-4cc9-ae26-de8111275bf8} </string>
+  <string>IVirtualDesktopManager,{a5cd92ff-29be-454c-8d04-d82879fb3f1b} </string>
+  <string>IVirtualDesktopManagerInternal,{88846798-1611-4d18-946b-4a67bff58c1b} </string>
+  <string>IVirtualDesktopNotification,{cd403e52-deed-4c13-b437-b98380f2b1e8} </string>
+  <string>IVirtualDesktopNotificationService,{0cd45e71-d927-4f15-8b0a-8fef525337bf} </string>
+  <string>IVirtualDesktopPinnedApps,{4ce81583-1e4c-4632-a621-07a53543148f} </string>
+</ArrayOfString>")]
+        public global::System.Collections.Specialized.StringCollection v_25158_or_later {
+            get {
+                return ((global::System.Collections.Specialized.StringCollection)(this["v_25158_or_later"]));
+            }
+        }
     }
 }
