@@ -89,7 +89,37 @@ namespace WindowsDesktop
 		/// </summary>
 		public void Switch()
 		{
+			var current = ComInterface.VirtualDesktopManagerInternal.GetCurrentDesktop();
+			if (this == current) return;
+
+			var currentHandle = NativeMethods.GetForegroundWindow();
+			var targetHandle = this.GetFirstWindowOnDesktop(this);
+			if (currentHandle == IntPtr.Zero
+				|| currentHandle == targetHandle
+				|| IsPinnedWindowOrDefault(currentHandle)
+				|| currentHandle == VirtualDesktopCache.TaskbarHandle
+				|| NativeMethods.GetClassName(currentHandle) == NativeMethods.TaskViewClassName)
+			{
+				ComInterface.VirtualDesktopManagerInternal.SwitchDesktop(this);
+				return;
+			}
+
+			var immersiveShellHandle = VirtualDesktopCache.ImmersiveShellHandle;
+			if (immersiveShellHandle != IntPtr.Zero)
+			{
+				NativeMethods.ForceSendActivationMessage(immersiveShellHandle, currentHandle);
+			}
+
 			ComInterface.VirtualDesktopManagerInternal.SwitchDesktop(this);
+
+			if (targetHandle != IntPtr.Zero)
+			{
+				var foregroundHandle = NativeMethods.GetForegroundWindow();
+				if (targetHandle != foregroundHandle)
+				{
+					NativeMethods.ForceSetForegroundWindow(targetHandle, foregroundHandle);
+				}
+			}
 		}
 
 		/// <summary>
@@ -149,6 +179,23 @@ namespace WindowsDesktop
 			catch (COMException ex) when (ex.Match(HResult.TYPE_E_OUTOFBOUNDS))
 			{
 				return null;
+			}
+		}
+
+		private IntPtr GetFirstWindowOnDesktop(VirtualDesktop target)
+		{
+			var handle = IntPtr.Zero;
+			_ = NativeMethods.EnumWindows(AddHandleOnCurrentDesktop, IntPtr.Zero);
+			return handle;
+
+			bool AddHandleOnCurrentDesktop(IntPtr hWnd, IntPtr lParam)
+			{
+				if (FromHwnd(hWnd) == target)
+				{
+					handle = hWnd;
+					return false;
+				}
+				return true;
 			}
 		}
 

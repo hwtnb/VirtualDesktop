@@ -20,6 +20,22 @@ namespace WindowsDesktop
 		}
 
 		/// <summary>
+		/// Determines whether the specified window is pinned. Returns false if an exception is thrown.
+		/// </summary>
+		/// <param name="hWnd">The handle of the window.</param>
+		public static bool IsPinnedWindowOrDefault(IntPtr hWnd)
+		{
+			try
+			{
+				return IsPinnedWindow(hWnd);
+			}
+			catch (Exception)
+			{
+				return false;
+			}
+		}
+
+		/// <summary>
 		/// Pins the specified window, showing it on all virtual desktops.
 		/// </summary>
 		/// <param name="hWnd">The handle of the window.</param>
