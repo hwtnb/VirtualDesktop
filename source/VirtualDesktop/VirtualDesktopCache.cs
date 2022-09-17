@@ -37,9 +37,16 @@ namespace WindowsDesktop
 			{
 				_cache.Clear();
 			}
+
+			ImmersiveShellHandle = NativeMethods.FindWindow(NativeMethods.ImmersiveShellClassName, null);
+			TaskbarHandle = NativeMethods.FindWindow(NativeMethods.TaskbarClassName, null);
 		}
 
 		public static VirtualDesktop GetOrCreate(object comObject)
 			=> _cache.GetOrCreate(comObject);
+
+		public static IntPtr ImmersiveShellHandle { get; private set; } = IntPtr.Zero;
+
+		public static IntPtr TaskbarHandle { get; private set; } = IntPtr.Zero;
 	}
 }
