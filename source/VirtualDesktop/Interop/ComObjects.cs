@@ -41,6 +41,7 @@ namespace WindowsDesktop.Interop
 		private void Initialize()
 		{
 			this.IsAvailable = false;
+			VirtualDesktop.History?.Clear();
 			VirtualDesktopCache.Initialize(this._assembly);
 
 			this.VirtualDesktopManager = (IVirtualDesktopManager)Activator.CreateInstance(Type.GetTypeFromCLSID(CLSID.VirtualDesktopManager));
