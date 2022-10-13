@@ -29,7 +29,7 @@ namespace WindowsDesktop
 		{
 			get
 			{
-				var desktops = GetDesktops();
+				var desktops = AllDesktops;
 				var index = Array.IndexOf(desktops, this);
 				return index;
 			}
