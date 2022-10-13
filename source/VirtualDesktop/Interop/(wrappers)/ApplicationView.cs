@@ -12,6 +12,16 @@ namespace WindowsDesktop.Interop
 		public ApplicationView(ComInterfaceAssembly assembly, object comObject, string comInterfaceName = null)
 			: base(assembly, comObject, comInterfaceName) { }
 
+		public int SetFocus()
+		{
+			return this.Invoke<int>();
+		}
+
+		public int SwitchTo()
+		{
+			return this.Invoke<int>();
+		}
+
 		public string GetAppUserModelId()
 		{
 			var param = Args((string)null);

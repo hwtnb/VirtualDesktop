@@ -10,6 +10,8 @@ namespace WindowsDesktop.Interop
 		{
 		}
 
+		public abstract int GetCount();
+
 		public abstract void MoveViewToDesktop(ApplicationView pView, VirtualDesktop desktop);
 
 		public abstract VirtualDesktop GetCurrentDesktop();

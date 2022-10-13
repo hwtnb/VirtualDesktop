@@ -16,6 +16,33 @@ namespace WindowsDesktop
 		/// </summary>
 		public static bool IsSupported => GetIsSupported();
 
+		private static VirtualDesktop[] _desktopCaches = null;
+
+		/// <summary>
+		/// Returns an array of available virtual desktops (from cache data).
+		/// </summary>
+		public static VirtualDesktop[] AllDesktops
+		{
+			get
+			{
+				if (_desktopCaches == null) _desktopCaches = GetDesktops();
+				return _desktopCaches;
+			}
+		}
+
+		/// <summary>
+		/// Gets the count of available virtual desktops.
+		/// </summary>
+		public static int Count
+		{
+			get
+			{
+				VirtualDesktopHelper.ThrowIfNotSupported();
+
+				return ComInterface.VirtualDesktopManagerInternal.GetCount();
+			}
+		}
+
 		/// <summary>
 		/// Gets the virtual desktop that is currently displayed.
 		/// </summary>
@@ -28,6 +55,11 @@ namespace WindowsDesktop
 				return ComInterface.VirtualDesktopManagerInternal.GetCurrentDesktop();
 			}
 		}
+
+		/// <summary>
+		/// Gets history of virtual desktops that were displayed.
+		/// </summary>
+		public static VirtualDesktopHistory History { get; } = new VirtualDesktopHistory();
 
 		/// <summary>
 		/// Returns an array of available virtual desktops.
@@ -113,6 +145,64 @@ namespace WindowsDesktop
 
 				return true;
 			}
+		}
+	}
+
+	public class VirtualDesktopHistory
+	{
+		public bool IsInitialized => this._list != null;
+
+		public int Count => this.List.Count;
+
+		public VirtualDesktop Previous => this.Count > 0 ? this._list[0] : null;
+
+		private List<VirtualDesktop> _list = null;
+
+		private List<VirtualDesktop> List
+		{
+			get
+			{
+				if (!this.IsInitialized) this.Initialize();
+				return this._list;
+			}
+		}
+
+		internal void Clear()
+		{
+			this._list = null;
+		}
+
+		internal void SetPrevious(VirtualDesktop prev)
+		{
+			var list = this.List;
+			for (var oldIndex = list.Count - 1; oldIndex > 0; oldIndex--)
+			{
+				if (list[oldIndex] != prev) continue;
+
+				for (var i = oldIndex; i > 0; i--)
+				{
+					list[i] = list[i - 1];
+				}
+				break;
+			}
+			list[0] = prev;
+		}
+
+		internal void Add(VirtualDesktop desktop)
+		{
+			this.List.Add(desktop);
+		}
+
+		internal void Remove(VirtualDesktop desktop)
+		{
+			this.List.Remove(desktop);
+		}
+
+		private void Initialize()
+		{
+			var current = VirtualDesktop.Current;
+			this._list = VirtualDesktop.AllDesktops.ToList();
+			this.SetPrevious(current);
 		}
 	}
 }
