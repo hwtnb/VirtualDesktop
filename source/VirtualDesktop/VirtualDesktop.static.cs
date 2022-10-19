@@ -17,6 +17,19 @@ namespace WindowsDesktop
 		public static bool IsSupported => GetIsSupported();
 
 		/// <summary>
+		/// Gets the count of available virtual desktops.
+		/// </summary>
+		public static int Count
+		{
+			get
+			{
+				VirtualDesktopHelper.ThrowIfNotSupported();
+
+				return ComInterface.VirtualDesktopManagerInternal.GetCount();
+			}
+		}
+
+		/// <summary>
 		/// Gets the virtual desktop that is currently displayed.
 		/// </summary>
 		public static VirtualDesktop Current

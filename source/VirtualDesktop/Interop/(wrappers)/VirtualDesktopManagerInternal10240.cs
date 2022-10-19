@@ -12,6 +12,11 @@ namespace WindowsDesktop.Interop
 		{
 		}
 
+		public override int GetCount()
+		{
+			return this.Invoke<int>();
+		}
+
 		public override void MoveViewToDesktop(ApplicationView pView, VirtualDesktop desktop)
 		{
 			this.Invoke(Args(pView.ComObject, desktop.ComObject));
