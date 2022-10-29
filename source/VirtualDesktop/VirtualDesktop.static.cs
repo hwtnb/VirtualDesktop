@@ -16,6 +16,20 @@ namespace WindowsDesktop
 		/// </summary>
 		public static bool IsSupported => GetIsSupported();
 
+		private static VirtualDesktop[] _desktopCaches = null;
+
+		/// <summary>
+		/// Returns an array of available virtual desktops (from cache data).
+		/// </summary>
+		public static VirtualDesktop[] AllDesktops
+		{
+			get
+			{
+				if (_desktopCaches == null) _desktopCaches = GetDesktops();
+				return _desktopCaches;
+			}
+		}
+
 		/// <summary>
 		/// Gets the count of available virtual desktops.
 		/// </summary>
@@ -187,7 +201,7 @@ namespace WindowsDesktop
 		private void Initialize()
 		{
 			var current = VirtualDesktop.Current;
-			this._list = VirtualDesktop.GetDesktops().ToList();
+			this._list = VirtualDesktop.AllDesktops.ToList();
 			this.SetPrevious(current);
 		}
 	}
