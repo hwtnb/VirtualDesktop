@@ -49,6 +49,8 @@ namespace WindowsDesktop
 		{
 			public static void RaiseCreated(object sender, VirtualDesktop pDesktop)
 			{
+				History.Add(pDesktop);
+
 				Created?.Invoke(sender, pDesktop);
 			}
 
@@ -66,6 +68,8 @@ namespace WindowsDesktop
 
 			public static void RaiseDestroyed(object sender, VirtualDesktop pDesktopDestroyed, VirtualDesktop pDesktopFallback)
 			{
+				History.Remove(pDesktopDestroyed);
+
 				var args = new VirtualDesktopDestroyEventArgs(pDesktopDestroyed, pDesktopFallback);
 				Destroyed?.Invoke(sender, args);
 			}
@@ -77,6 +81,8 @@ namespace WindowsDesktop
 
 			public static void RaiseCurrentChanged(object sender, VirtualDesktop pDesktopOld, VirtualDesktop pDesktopNew)
 			{
+				History.SetPrevious(pDesktopOld);
+
 				var args = new VirtualDesktopChangedEventArgs(pDesktopOld, pDesktopNew);
 				CurrentChanged?.Invoke(sender, args);
 			}
