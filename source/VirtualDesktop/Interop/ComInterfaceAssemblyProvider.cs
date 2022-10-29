@@ -165,6 +165,8 @@ namespace WindowsDesktop.Interop
 					var result = provider.CompileAssemblyFromSource(cp, sources.ToArray());
 					if (result.Errors.Count > 0) 
 					{
+						File.Delete(path);
+
 						var nl = Environment.NewLine;
 						var message = $"Failed to compile COM interfaces assembly.{nl}{string.Join(nl, result.Errors.OfType<CompilerError>().Select(x => $"  {x}"))}";
 
