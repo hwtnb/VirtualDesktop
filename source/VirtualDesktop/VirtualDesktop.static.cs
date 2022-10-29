@@ -134,7 +134,7 @@ namespace WindowsDesktop
 		}
 	}
 
-	public class VirtualDesktopHistory : IDisposable
+	public class VirtualDesktopHistory
 	{
 		public bool IsInitialized => this._list != null;
 
@@ -153,16 +153,35 @@ namespace WindowsDesktop
 			}
 		}
 
-		internal VirtualDesktopHistory()
-		{
-			VirtualDesktop.Created += this.OnCreated;
-			VirtualDesktop.Destroyed += this.OnDestroyed;
-			VirtualDesktop.CurrentChanged += this.OnCurrentChanged;
-		}
-
 		internal void Clear()
 		{
 			this._list = null;
+		}
+
+		internal void SetPrevious(VirtualDesktop prev)
+		{
+			var list = this.List;
+			for (var oldIndex = list.Count - 1; oldIndex > 0; oldIndex--)
+			{
+				if (list[oldIndex] != prev) continue;
+
+				for (var i = oldIndex; i > 0; i--)
+				{
+					list[i] = list[i - 1];
+				}
+				break;
+			}
+			list[0] = prev;
+		}
+
+		internal void Add(VirtualDesktop desktop)
+		{
+			this.List.Add(desktop);
+		}
+
+		internal void Remove(VirtualDesktop desktop)
+		{
+			this.List.Remove(desktop);
 		}
 
 		private void Initialize()
@@ -170,51 +189,6 @@ namespace WindowsDesktop
 			var current = VirtualDesktop.Current;
 			this._list = VirtualDesktop.GetDesktops().ToList();
 			this.SetPrevious(current);
-		}
-
-		private void SetPrevious(VirtualDesktop prev)
-		{
-			var list = this.List;
-			var oldIndex = list.IndexOf(prev);
-			for (var i = oldIndex; i > 0; i--)
-			{
-				list[i] = list[i - 1];
-			}
-			list[0] = prev;
-		}
-
-		private void Add(VirtualDesktop desktop)
-		{
-			this.List.Add(desktop);
-		}
-
-		private void Remove(VirtualDesktop desktop)
-		{
-			this.List.Remove(desktop);
-		}
-
-		private void OnCreated(object sender, VirtualDesktop newDesktop)
-		{
-			this.Add(newDesktop);
-		}
-
-		private void OnDestroyed(object sender, VirtualDesktopDestroyEventArgs e)
-		{
-			this.Remove(e.Destroyed);
-		}
-
-		private void OnCurrentChanged(object sender, VirtualDesktopChangedEventArgs e)
-		{
-			this.SetPrevious(e.OldDesktop);
-		}
-
-		public void Dispose()
-		{
-			VirtualDesktop.Created -= this.OnCreated;
-			VirtualDesktop.Destroyed -= this.OnDestroyed;
-			VirtualDesktop.CurrentChanged -= this.OnCurrentChanged;
-
-			this.Clear();
 		}
 	}
 }
