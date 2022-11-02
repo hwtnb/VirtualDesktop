@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+	  <TargetFrameworks>netcoreapp3.1;net6.0-windows10.0.19041.0</TargetFrameworks>
     <UseWPF>true</UseWPF>
     <Authors>Manato KAMEYA</Authors>
     <Company>grabacr.net</Company>

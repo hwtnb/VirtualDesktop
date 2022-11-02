@@ -16,11 +16,9 @@ namespace WindowsDesktop.Interop
 
 		IntPtr GetMonitor();
 
-		[return: MarshalAs(UnmanagedType.HString)]
-		string GetName();
+		HString GetName();
 
-		[return: MarshalAs(UnmanagedType.HString)]
-		string GetWallpaperPath();
+		HString GetWallpaperPath();
 	}
 
 	// see also:
