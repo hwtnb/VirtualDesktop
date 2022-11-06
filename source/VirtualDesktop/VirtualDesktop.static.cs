@@ -122,6 +122,12 @@ namespace WindowsDesktop
 			}
 		}
 
+		internal static void ClearCaches()
+		{
+			_desktopCaches = null;
+			History.Clear();
+		}
+
 		internal static bool GetIsSupported()
 		{
 			return _isSupported ?? (_isSupported = Core()).Value;
