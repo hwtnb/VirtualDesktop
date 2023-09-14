@@ -43,6 +43,19 @@ namespace WindowsDesktop.Interop
 			return this.CreateAssembly();
 		}
 
+		public bool TryDeleteAssembly()
+		{
+			var dir = new DirectoryInfo(this._assemblyDirectoryPath);
+
+			if (!dir.Exists) return false;
+
+			var path = Path.Combine(dir.FullName, string.Format(_assemblyName, ProductInfo.OSBuild));
+
+			if (!File.Exists(path)) return false;
+
+			return this.TryDeleteAssembly(path);
+		}
+
 		private Assembly GetExistingAssembly()
 		{
 			var searchTargets = new[]
@@ -70,7 +83,7 @@ namespace WindowsDesktop.Interop
 							{
 								System.Diagnostics.Debug.WriteLine($"Assembly found: {file.FullName}");
 #if !DEBUG
-								return Assembly.LoadFile(file.FullName);
+								return Assembly.Load(File.ReadAllBytes(file.FullName));
 #endif
 							}
 						}
@@ -79,7 +92,7 @@ namespace WindowsDesktop.Interop
 							System.Diagnostics.Debug.WriteLine("Failed to load assembly: ");
 							System.Diagnostics.Debug.WriteLine(ex);
 
-							File.Delete(file.FullName);
+							this.TryDeleteAssembly(file.FullName);
 						}
 					}
 				}
@@ -155,22 +168,22 @@ namespace WindowsDesktop.Interop
 				if (!dir.Exists) dir.Create();
 
 #if NETFRAMEWORK
-			using (var provider = new CSharpCodeProvider())
-			{
-				var path = Path.Combine(dir.FullName, string.Format(_assemblyName, ProductInfo.OSBuild));
-				var cp = new CompilerParameters
+				using (var provider = new CSharpCodeProvider())
 				{
-					OutputAssembly = path,
-					GenerateExecutable = false,
-					GenerateInMemory = false,
-				};
-				cp.ReferencedAssemblies.Add("System.dll");
-				cp.ReferencedAssemblies.Add(Assembly.GetExecutingAssembly().Location);
+					var path = Path.Combine(dir.FullName, string.Format(_assemblyName, ProductInfo.OSBuild));
+					var cp = new CompilerParameters
+					{
+						OutputAssembly = path,
+						GenerateExecutable = false,
+						GenerateInMemory = false,
+					};
+					cp.ReferencedAssemblies.Add("System.dll");
+					cp.ReferencedAssemblies.Add(Assembly.GetExecutingAssembly().Location);
 
 					var result = provider.CompileAssemblyFromSource(cp, sources.ToArray());
 					if (result.Errors.Count > 0) 
 					{
-						File.Delete(path);
+						this.TryDeleteAssembly(path);
 
 						var nl = Environment.NewLine;
 						var message = $"Failed to compile COM interfaces assembly.{nl}{string.Join(nl, result.Errors.OfType<CompilerError>().Select(x => $"  {x}"))}";
@@ -200,7 +213,7 @@ namespace WindowsDesktop.Interop
 					return AssemblyLoadContext.Default.LoadFromAssemblyPath(path);
 				}
 
-				File.Delete(path);
+				this.TryDeleteAssembly(path);
 
 				var nl = Environment.NewLine;
 				var message = $"Failed to compile COM interfaces assembly.{nl}{string.Join(nl, result.Diagnostics.Select(x => $"  {x.GetMessage()}"))}";
@@ -211,6 +224,21 @@ namespace WindowsDesktop.Interop
 			finally
 			{
 				GC.Collect();
+			}
+		}
+
+		private bool TryDeleteAssembly(string path)
+		{
+			try
+			{
+				File.Delete(path);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine("Failed to delete assembly: ");
+				System.Diagnostics.Debug.WriteLine(ex);
+				return false;
 			}
 		}
 	}

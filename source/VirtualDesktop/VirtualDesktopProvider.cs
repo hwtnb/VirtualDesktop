@@ -67,9 +67,15 @@ namespace WindowsDesktop
 			}
 		}
 
+		public bool TryDeleteAssembly()
+		{
+			var assemblyProvider = new ComInterfaceAssemblyProvider(this.ComInterfaceAssemblyPath);
+			return assemblyProvider.TryDeleteAssembly();
+		}
+
 		public void Dispose()
 		{
-			this.ComObjects?.Dispose();
+			this._comObjects?.Dispose();
 		}
 	}
 
