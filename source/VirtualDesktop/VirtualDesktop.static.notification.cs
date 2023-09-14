@@ -45,6 +45,16 @@ namespace WindowsDesktop
 		/// </summary>
 		public static event EventHandler<VirtualDesktopWallpaperChangedEventArgs> WallpaperChanged;
 
+		/// <summary>
+		/// Occurs when a virtual desktop is switched.
+		/// </summary>
+		public static event EventHandler<VirtualDesktop> DesktopSwitched;
+
+		/// <summary>
+		/// Occurs when a remote virtual desktop is connected.
+		/// </summary>
+		public static event EventHandler<VirtualDesktop> RemoteDesktopConnected;
+
 		internal static class EventRaiser
 		{
 			public static void RaiseCreated(object sender, VirtualDesktop pDesktop)
@@ -113,6 +123,16 @@ namespace WindowsDesktop
 
 				var args = new VirtualDesktopWallpaperChangedEventArgs(pDesktop, oldPath, path);
 				WallpaperChanged?.Invoke(sender, args);
+			}
+
+			public static void RaiseDesktopSwitched(object sender, VirtualDesktop pDesktop)
+			{
+				DesktopSwitched?.Invoke(sender, pDesktop);
+			}
+
+			public static void RaiseRemoteDesktopConnected(object sender, VirtualDesktop pDesktop)
+			{
+				RemoteDesktopConnected?.Invoke(sender, pDesktop);
 			}
 		}
 	}

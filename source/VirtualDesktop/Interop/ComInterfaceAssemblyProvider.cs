@@ -26,7 +26,7 @@ namespace WindowsDesktop.Interop
 		private static readonly Regex _assemblyRegex = new Regex(@"VirtualDesktop\.(?<build>\d{5}?)(\.\w*|)\.dll");
 		private static readonly string _defaultAssemblyDirectoryPath = Path.Combine(ProductInfo.LocalAppData.FullName, "assemblies");
 		private static readonly Version _requireVersion = new Version("1.0");
-		private static readonly int[] _interfaceVersions = new[] { 10240, 20231, 21313, 21359, 22449, 25158 };
+		private static readonly int[] _interfaceVersions = new[] { 10240, 20231, 21313, 21359, 22449, 22621, 25158, 25931 };
 
 		private readonly string _assemblyDirectoryPath;
 
@@ -91,9 +91,14 @@ namespace WindowsDesktop.Interop
 		private Assembly CreateAssembly()
 		{
 			var executingAssembly = Assembly.GetExecutingAssembly();
-			var interfaceVersion = _interfaceVersions
-				.Reverse()
-				.First(build => build <= ProductInfo.OSBuild);
+			var interfaceVersion = ProductInfo.OSBuild == 22621 && ProductInfo.OSRevision < 2215
+				? _interfaceVersions
+					.Where(build => build != 22621)
+					.Reverse()
+					.First(build => build <= ProductInfo.OSBuild)
+				: _interfaceVersions
+					.Reverse()
+					.First(build => build <= ProductInfo.OSBuild);
 			var interfaceNames = executingAssembly
 				.GetTypes()
 				.SelectMany(x => x.GetComInterfaceNamesIfWrapper(interfaceVersion))

@@ -72,5 +72,15 @@ namespace WindowsDesktop.Interop
 		{
 			VirtualDesktop.EventRaiser.RaiseWallpaperChanged(this, VirtualDesktopCache.GetOrCreate(pDesktop), chPath);
 		}
+
+		protected void VirtualDesktopSwitchedCore(object pDesktop)
+		{
+			VirtualDesktop.EventRaiser.RaiseDesktopSwitched(this, VirtualDesktopCache.GetOrCreate(pDesktop));
+		}
+
+		protected void RemoteVirtualDesktopConnectedCore(object pDesktop)
+		{
+			VirtualDesktop.EventRaiser.RaiseRemoteDesktopConnected(this, VirtualDesktopCache.GetOrCreate(pDesktop));
+		}
 	}
 }

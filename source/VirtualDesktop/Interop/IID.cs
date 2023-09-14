@@ -48,6 +48,10 @@ namespace WindowsDesktop.Interop
 				if (int.TryParse(_osBuildOrLaterRegex.Match(prop.Name).Groups["build"]?.ToString(), out var laterBuild)
 					&& laterBuild <= ProductInfo.OSBuild)
 				{
+					if (laterBuild == 22621 && laterBuild == ProductInfo.OSBuild && ProductInfo.OSRevision < 2215)
+					{
+						continue;
+					}
 					return ParseIIDsFromSettingsProperty(targets, prop);
 				}
 			}
