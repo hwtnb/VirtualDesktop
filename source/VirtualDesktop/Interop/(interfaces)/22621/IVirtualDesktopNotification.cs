@@ -25,6 +25,10 @@ namespace WindowsDesktop.Interop
 		void CurrentVirtualDesktopChanged(IVirtualDesktop pDesktopOld, IVirtualDesktop pDesktopNew);
 
 		void VirtualDesktopWallpaperChanged(IVirtualDesktop pDesktop, [MarshalAs(UnmanagedType.HString)] string chPath);
+
+		void VirtualDesktopSwitched(IVirtualDesktop pDesktop);
+
+		void RemoteVirtualDesktopConnected(IVirtualDesktop pDesktop);
 	}
 
 	public class VirtualDesktopNotificationListener : VirtualDesktopNotification, IVirtualDesktopNotification
