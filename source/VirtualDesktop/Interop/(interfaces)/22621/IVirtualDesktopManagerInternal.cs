@@ -40,5 +40,9 @@ namespace WindowsDesktop.Interop
 		void UpdateWallpaperPathForAllDesktops([MarshalAs(UnmanagedType.HString)] string wallpaper);//18
 
 		void CopyDesktopState(IApplicationView pView0, IApplicationView pView1);//19
+
+		int GetDesktopIsPerMonitor();
+
+		void SetDesktopIsPerMonitor([MarshalAs(UnmanagedType.Bool)] bool state);
 	}
 }

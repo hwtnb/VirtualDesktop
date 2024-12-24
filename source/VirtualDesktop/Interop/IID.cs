@@ -13,6 +13,7 @@ namespace WindowsDesktop.Interop
 	{
 		private static readonly Regex _osBuildRegex = new Regex(@"v_(?<build>\d{5}?)$");
 		private static readonly Regex _osBuildOrLaterRegex = new Regex(@"v_(?<build>\d{5}?)_or_later");
+		private static readonly Regex _osBuildWithRevisionOrLaterRegex = new Regex(@"v_(?<build>\d{5}?)_(?<revision>\d{4}?)_or_later");
 
 		// ReSharper disable once InconsistentNaming
 		public static Dictionary<string, Guid> GetIIDs(string[] targets)
@@ -43,7 +44,21 @@ namespace WindowsDesktop.Interop
 				}
 			}
 
-			foreach (var prop in props.OrderByDescending(p => p.Name))
+			var sortedProps = props.OrderByDescending(p => p.Name);
+
+			foreach (var prop in sortedProps)
+			{
+				var match = _osBuildWithRevisionOrLaterRegex.Match(prop.Name);
+				if (int.TryParse(match.Groups["build"]?.ToString(), out var laterBuild)
+					&& int.TryParse(match.Groups["revision"]?.ToString(), out var laterRevision)
+					&& laterBuild <= ProductInfo.OSBuild
+					&& laterRevision <= ProductInfo.OSRevision)
+				{
+					return ParseIIDsFromSettingsProperty(targets, prop);
+				}
+			}
+
+			foreach (var prop in sortedProps)
 			{
 				if (int.TryParse(_osBuildOrLaterRegex.Match(prop.Name).Groups["build"]?.ToString(), out var laterBuild)
 					&& laterBuild <= ProductInfo.OSBuild)
