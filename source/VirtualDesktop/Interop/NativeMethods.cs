@@ -16,10 +16,26 @@ namespace WindowsDesktop.Interop
 		public static readonly string TaskViewClassName = ProductInfo.OSBuild >= 22000 ? "XamlExplorerHostIslandWindow" : "Windows.UI.Core.CoreWindow";
 		public static readonly string ImmersiveShellClassName = ProductInfo.OSBuild >= 22000 ? "ApplicationManager_ImmersiveShellWindow" : "ApplicationManager_DesktopShellWindow";
 
+		private const int GWL_EXSTYLE = -20;
+		private const uint GW_OWNER = 4;
+		private const long WS_EX_TOOLWINDOW = 0x00000080L;
+
+		private const uint SMTO_ABORTIFHUNG = 0x0002;
+
+		/// <summary>
+		/// Upper bound (in milliseconds) for each activation message sent to another process
+		/// while switching desktops. Bounds the caller's stall if a target window is busy,
+		/// instead of blocking indefinitely like <see cref="SendMessage"/>.
+		/// </summary>
+		private const uint ActivationMessageTimeout = 100;
+
 		public delegate bool EnumWindowsDelegate(IntPtr hWnd, IntPtr lParam);
 
 		[DllImport("user32.dll", EntryPoint = "SendMessageW", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
 		public static extern IntPtr SendMessage(IntPtr hWnd, WindowsMessages msg, IntPtr wParam, IntPtr lParam);
+
+		[DllImport("user32.dll", EntryPoint = "SendMessageTimeoutW", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
+		private static extern IntPtr SendMessageTimeout(IntPtr hWnd, WindowsMessages msg, IntPtr wParam, IntPtr lParam, uint flags, uint timeout, out IntPtr lpdwResult);
 
 		[DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
 		public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
@@ -34,6 +50,19 @@ namespace WindowsDesktop.Interop
 
 		[DllImport("user32.dll")]
 		public static extern IntPtr GetForegroundWindow();
+
+		[DllImport("user32.dll")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool IsWindowVisible(IntPtr hWnd);
+
+		[DllImport("user32.dll", SetLastError = true)]
+		public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
+		[DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
+		private static extern int GetWindowLong32(IntPtr hWnd, int nIndex);
+
+		[DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+		private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
 
 		[DllImport("user32.dll", SetLastError = true)]
 		[return: MarshalAs(UnmanagedType.Bool)]
@@ -66,6 +95,33 @@ namespace WindowsDesktop.Interop
 			return buffer.ToString();
 		}
 
+		private static IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex)
+			=> IntPtr.Size == 8 ? GetWindowLongPtr64(hWnd, nIndex) : new IntPtr(GetWindowLong32(hWnd, nIndex));
+
+		/// <summary>
+		/// Returns whether the window is a normal, visible, top-level application window
+		/// (the kind a user expects to receive focus). Uses only cheap user32 calls, so a
+		/// caller can filter with this before paying for a cross-process desktop lookup.
+		/// </summary>
+		public static bool IsFocusableTopLevelWindow(IntPtr hWnd)
+		{
+			if (!IsWindowVisible(hWnd)) return false;
+			if (GetWindow(hWnd, GW_OWNER) != IntPtr.Zero) return false;
+
+			var exStyle = GetWindowLongPtr(hWnd, GWL_EXSTYLE).ToInt64();
+			return (exStyle & WS_EX_TOOLWINDOW) == 0;
+		}
+
+		private static IntPtr SendActivationMessage(IntPtr hWnd, WindowsMessages msg, IntPtr wParam, IntPtr lParam)
+		{
+			// The caller holds an AttachThreadInput bond, so the target and foreground windows
+			// share an input queue and this message is delivered synchronously (which is what
+			// makes the activation stick). SMTO_ABORTIFHUNG plus a short timeout keeps a busy
+			// or hung target from stalling us indefinitely the way SendMessage would.
+			var succeeded = SendMessageTimeout(hWnd, msg, wParam, lParam, SMTO_ABORTIFHUNG, ActivationMessageTimeout, out var result);
+			return succeeded == IntPtr.Zero ? IntPtr.Zero : result;
+		}
+
 		public static bool ForceSetForegroundWindow(IntPtr targetHandle, IntPtr foregroundHandle)
 		{
 			var targetThreadId = GetWindowThreadProcessId(targetHandle, out _);
@@ -82,9 +138,9 @@ namespace WindowsDesktop.Interop
 			var isAttached = AttachThreadInput(targetThreadId, foregroundThreadId, true);
 			try
 			{
-				SendMessage(foregroundHandle, WindowsMessages.WM_ACTIVATE, WA_INACTIVE, foregroundHandle);
-				SendMessage(targetHandle, WindowsMessages.WM_ACTIVATE, WA_ACTIVE, targetHandle);
-				SendMessage(targetHandle, WindowsMessages.WM_SETFOCUS, targetHandle, IntPtr.Zero);
+				SendActivationMessage(foregroundHandle, WindowsMessages.WM_ACTIVATE, WA_INACTIVE, foregroundHandle);
+				SendActivationMessage(targetHandle, WindowsMessages.WM_ACTIVATE, WA_ACTIVE, targetHandle);
+				SendActivationMessage(targetHandle, WindowsMessages.WM_SETFOCUS, targetHandle, IntPtr.Zero);
 				isForegroundChanged = BringWindowToTop(targetHandle);
 			}
 			finally
@@ -111,7 +167,7 @@ namespace WindowsDesktop.Interop
 			var isAttached = AttachThreadInput(targetThreadId, foregroundThreadId, true);
 			try
 			{
-				result = SendMessage(targetHandle, WindowsMessages.WM_ACTIVATE, WA_ACTIVE, targetHandle);
+				result = SendActivationMessage(targetHandle, WindowsMessages.WM_ACTIVATE, WA_ACTIVE, targetHandle);
 			}
 			finally
 			{

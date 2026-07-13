@@ -93,9 +93,11 @@ namespace WindowsDesktop
 			if (this == current) return;
 
 			var currentHandle = NativeMethods.GetForegroundWindow();
-			var targetHandle = this.GetFirstWindowOnDesktop(this);
+
+			// When the current foreground window is a special window (none / pinned / taskbar /
+			// Task View), the OS default switch behavior is appropriate and the focus fix below
+			// is unnecessary (or would target the wrong window). Just switch.
 			if (currentHandle == IntPtr.Zero
-				|| currentHandle == targetHandle
 				|| IsPinnedWindowOrDefault(currentHandle)
 				|| currentHandle == VirtualDesktopCache.TaskbarHandle
 				|| NativeMethods.GetClassName(currentHandle) == NativeMethods.TaskViewClassName)
@@ -112,6 +114,10 @@ namespace WindowsDesktop
 
 			ComInterface.VirtualDesktopManagerInternal.SwitchDesktop(this);
 
+			// The target desktop is now current, so its windows are at the front of the Z-order.
+			// Searching here (instead of before the switch) lets EnumWindows short-circuit on the
+			// first hit, and the per-window desktop lookup runs only for real app windows.
+			var targetHandle = this.GetFirstWindowOnDesktop();
 			if (targetHandle != IntPtr.Zero)
 			{
 				var foregroundHandle = NativeMethods.GetForegroundWindow();
@@ -182,20 +188,38 @@ namespace WindowsDesktop
 			}
 		}
 
-		private IntPtr GetFirstWindowOnDesktop(VirtualDesktop target)
+		private IntPtr GetFirstWindowOnDesktop()
 		{
 			var handle = IntPtr.Zero;
-			_ = NativeMethods.EnumWindows(AddHandleOnCurrentDesktop, IntPtr.Zero);
+			_ = NativeMethods.EnumWindows(FindFirstWindowOnThisDesktop, IntPtr.Zero);
 			return handle;
 
-			bool AddHandleOnCurrentDesktop(IntPtr hWnd, IntPtr lParam)
+			bool FindFirstWindowOnThisDesktop(IntPtr hWnd, IntPtr lParam)
 			{
-				if (FromHwnd(hWnd) == target)
+				// Cheap user32-only checks first, so the cross-process desktop lookup below is
+				// paid only for genuine top-level app windows rather than every top-level window.
+				if (!NativeMethods.IsFocusableTopLevelWindow(hWnd)) return true;
+
+				if (this.IsWindowOnThisDesktop(hWnd))
 				{
 					handle = hWnd;
 					return false;
 				}
 				return true;
+			}
+		}
+
+		private bool IsWindowOnThisDesktop(IntPtr hWnd)
+		{
+			try
+			{
+				// Compare the desktop id directly instead of materializing a VirtualDesktop via
+				// FromHwnd (which costs an extra FindDesktop COM call plus a cache allocation).
+				return ComInterface.VirtualDesktopManager.GetWindowDesktopId(hWnd) == this.Id;
+			}
+			catch (COMException)
+			{
+				return false;
 			}
 		}
 
