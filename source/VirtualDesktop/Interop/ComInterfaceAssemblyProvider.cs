@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+#if !NETFRAMEWORK
+using System.Reflection.Metadata;
+#endif
 using System.Text;
 using System.Text.RegularExpressions;
 using WindowsDesktop.Properties;
@@ -83,7 +86,7 @@ namespace WindowsDesktop.Interop
 							{
 								System.Diagnostics.Debug.WriteLine($"Assembly found: {file.FullName}");
 #if !DEBUG
-								return Assembly.Load(File.ReadAllBytes(file.FullName));
+								return Assembly.LoadFile(file.FullName);
 #endif
 							}
 						}
@@ -199,8 +202,29 @@ namespace WindowsDesktop.Interop
 				var syntaxTrees = sources.Select(x => SyntaxFactory.ParseSyntaxTree(x));
 				var references = AppDomain.CurrentDomain.GetAssemblies()
 					.Concat(new[] { Assembly.GetExecutingAssembly(), })
-					.Select(x => x.Location)
-					.Select(x => MetadataReference.CreateFromFile(x));
+					.Where(x => !x.IsDynamic)
+					.Select(x =>
+					{
+						if (!string.IsNullOrEmpty(x.Location))
+						{
+							return MetadataReference.CreateFromFile(x.Location);
+						}
+
+						unsafe
+						{
+							if (!x.TryGetRawMetadata(out byte* blob, out int length)
+								|| blob == null
+								|| length <= 0)
+							{
+								throw new InvalidOperationException(
+									$"Unable to obtain metadata for assembly '{x.FullName}'.");
+							}
+
+							return AssemblyMetadata
+								.Create(ModuleMetadata.CreateFromMetadata((IntPtr)blob, length))
+								.GetReference();
+						}
+					});
 				var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
 				var compilation = CSharpCompilation.Create(_assemblyName)
 					.WithOptions(options)

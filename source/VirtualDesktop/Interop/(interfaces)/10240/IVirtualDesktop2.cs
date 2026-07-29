@@ -13,9 +13,7 @@ namespace WindowsDesktop.Interop
 		bool IsViewVisible(IApplicationView pView);
 
 		Guid GetID();
-
-		[return: MarshalAs(UnmanagedType.HString)]
-		string GetName();
+		HString GetName();
 	}
 
 	// see also:

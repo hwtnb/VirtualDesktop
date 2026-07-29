@@ -63,12 +63,12 @@ namespace WindowsDesktop.Interop
 			VirtualDesktop.EventRaiser.RaiseCurrentChanged(this, VirtualDesktopCache.GetOrCreate(pDesktopOld), VirtualDesktopCache.GetOrCreate(pDesktopNew));
 		}
 
-		protected void VirtualDesktopRenamedCore(object pDesktop, string chName)
+		protected void VirtualDesktopRenamedCore(object pDesktop, HString chName)
 		{
 			VirtualDesktop.EventRaiser.RaiseRenamed(this, VirtualDesktopCache.GetOrCreate(pDesktop), chName);
 		}
 
-		protected void VirtualDesktopWallpaperChangedCore(object pDesktop, string chPath)
+		protected void VirtualDesktopWallpaperChangedCore(object pDesktop, HString chPath)
 		{
 			VirtualDesktop.EventRaiser.RaiseWallpaperChanged(this, VirtualDesktopCache.GetOrCreate(pDesktop), chPath);
 		}

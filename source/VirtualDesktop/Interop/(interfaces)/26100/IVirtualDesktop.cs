@@ -13,12 +13,8 @@ namespace WindowsDesktop.Interop
 		bool IsViewVisible(IApplicationView pView);
 
 		Guid GetID();
-
-		[return: MarshalAs(UnmanagedType.HString)]
-		string GetName();
-
-		[return: MarshalAs(UnmanagedType.HString)]
-		string GetWallpaperPath();
+		HString GetName();
+		HString GetWallpaperPath();
 
 		[return: MarshalAs(UnmanagedType.Bool)]
 		bool IsRemote();

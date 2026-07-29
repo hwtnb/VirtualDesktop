@@ -31,7 +31,7 @@ namespace WindowsDesktop.Interop
 
 		void GetDesktopSwitchIncludeExcludeViews(IVirtualDesktop pDesktop, out IObjectArray pUnknown1, out IObjectArray pUnknown2);
 
-		void SetDesktopName(IVirtualDesktop pDesktop, [MarshalAs(UnmanagedType.HString)] string chName);
+		void SetDesktopName(IVirtualDesktop pDesktop, HString chName);
 
 		void CopyDesktopState(IApplicationView pUnknown0, IApplicationView pUnknown1);
 
