@@ -5,9 +5,18 @@ namespace WindowsDesktop.Interop
 {
 	[ComImport]
 	[Guid("00000000-0000-0000-0000-000000000000") /* replace at runtime */]
-	[InterfaceType(ComInterfaceType.InterfaceIsIInspectable)]
+	[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 	public interface IApplicationView
 	{
+		// .NET 5 and later cannot marshal InterfaceIsIInspectable. Declare the
+		// inherited IInspectable slots explicitly so that the remaining ABI
+		// stays aligned when this interface is marshalled as IUnknown.
+		void GetIids(out ulong iidCount, out IntPtr iids);
+
+		HString GetRuntimeClassName();
+
+		IntPtr GetTrustLevel();
+
 		int SetFocus();
 
 		int SwitchTo();
