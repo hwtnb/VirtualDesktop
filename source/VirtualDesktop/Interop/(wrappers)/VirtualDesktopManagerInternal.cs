@@ -33,5 +33,15 @@ namespace WindowsDesktop.Interop
 		public abstract void SetDesktopName(VirtualDesktop desktop, HString name);
 
 		public abstract void SetDesktopWallpaper(VirtualDesktop desktop, HString path);
+
+		internal ComInterfaceAssembly SnapshotAssembly => this.ComInterfaceAssembly;
+
+		internal Type SnapshotManagerType => this.ComInterfaceType;
+
+		internal object InvokeSnapshotMember(string methodName, object[] parameters)
+			=> this.Invoke<object>(parameters, methodName);
+
+		internal VirtualDesktopSnapshotBatch CaptureSnapshot()
+			=> VirtualDesktopSnapshotReader.Capture(new DynamicComVirtualDesktopSnapshotSource(this));
 	}
 }

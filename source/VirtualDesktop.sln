@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VirtualDesktop.Showcase", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VirtualDesktop.WinForms", "VirtualDesktop.WinForms\VirtualDesktop.WinForms.csproj", "{4B6FB0EB-943E-42C9-8CC9-990D84A2EEDB}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VirtualDesktop.Tests", "VirtualDesktop.Tests\VirtualDesktop.Tests.csproj", "{A9A0E6B6-648D-4AE5-8E5A-6B6A7AFCA6D6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,6 +36,10 @@ Global
 		{4B6FB0EB-943E-42C9-8CC9-990D84A2EEDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4B6FB0EB-943E-42C9-8CC9-990D84A2EEDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4B6FB0EB-943E-42C9-8CC9-990D84A2EEDB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9A0E6B6-648D-4AE5-8E5A-6B6A7AFCA6D6}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{A9A0E6B6-648D-4AE5-8E5A-6B6A7AFCA6D6}.Debug|Any CPU.Build.0 = Debug|x64
+		{A9A0E6B6-648D-4AE5-8E5A-6B6A7AFCA6D6}.Release|Any CPU.ActiveCfg = Release|x64
+		{A9A0E6B6-648D-4AE5-8E5A-6B6A7AFCA6D6}.Release|Any CPU.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

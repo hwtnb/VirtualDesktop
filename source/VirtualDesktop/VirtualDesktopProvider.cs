@@ -73,6 +73,9 @@ namespace WindowsDesktop
 			return assemblyProvider.TryDeleteAssembly();
 		}
 
+		internal VirtualDesktopSnapshotBatch CaptureSnapshot()
+			=> this.ComObjects.VirtualDesktopManagerInternal.CaptureSnapshot();
+
 		public void Dispose()
 		{
 			this._comObjects?.Dispose();

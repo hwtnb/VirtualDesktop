@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFrameworks>net48;net10.0-windows10.0.26100.0</TargetFrameworks>
+		<Platforms>x86;x64</Platforms>
+		<IsPackable>false</IsPackable>
+		<OutputType>Exe</OutputType>
+		<AssemblyName>VirtualDesktop.Tests</AssemblyName>
+		<RootNamespace>WindowsDesktop.Tests</RootNamespace>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Platform)' == 'x86'">
+		<PlatformTarget>x86</PlatformTarget>
+		<DefineConstants>$(DefineConstants);EXPECTED_X86</DefineConstants>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Platform)' == 'x64'">
+		<PlatformTarget>x64</PlatformTarget>
+		<DefineConstants>$(DefineConstants);EXPECTED_X64</DefineConstants>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="xunit.v3" Version="3.2.2" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\VirtualDesktop\VirtualDesktop.csproj" />
+	</ItemGroup>
+</Project>
