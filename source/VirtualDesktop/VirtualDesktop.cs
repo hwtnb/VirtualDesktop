@@ -17,6 +17,7 @@ namespace WindowsDesktop
 	[UsedImplicitly(ImplicitUseTargetFlags.Members)]
 	public partial class VirtualDesktop : ComInterfaceWrapperBase, IDisposable
 	{
+		private VirtualDesktopProvider _provider;
 		/// <summary>
 		/// Gets the unique identifier for this virtual desktop.
 		/// </summary>
@@ -43,12 +44,7 @@ namespace WindowsDesktop
 		public string Name
 		{
 			get => this._name;
-			set
-			{
-				if (ProductInfo.OSBuild < 20231 && this.ComVersion < 2) throw new PlatformNotSupportedException("This Windows 10 version is not supported.");
-
-				ComInterface.VirtualDesktopManagerInternal.SetDesktopName(this, new HString(value));
-			}
+			set => this.ProviderOwner.SetDesktopName(this, value);
 		}
 
 		private string _wallpaperPath = null;
@@ -59,20 +55,17 @@ namespace WindowsDesktop
 		public string WallpaperPath
 		{
 			get => this._wallpaperPath;
-			set
-			{
-				if (ProductInfo.OSBuild < 21313) throw new PlatformNotSupportedException("This Windows 10 version is not supported.");
-
-				ComInterface.VirtualDesktopManagerInternal.SetDesktopWallpaper(this, new HString(value));
-			}
+			set => this.ProviderOwner.SetDesktopWallpaper(this, value);
 		}
 
 		[UsedImplicitly]
-		internal VirtualDesktop(ComInterfaceAssembly assembly, Guid id, object comObject)
+		internal VirtualDesktop(VirtualDesktopProvider provider, ComInterfaceAssembly assembly, Guid id, object comObject)
 			: base(assembly, comObject, latestVersion: 2)
 		{
+			this._provider = provider ?? throw new ArgumentNullException(nameof(provider));
 			this.Id = id;
-			
+			this._provider.RegisterDesktop(this);
+
 			if (ProductInfo.OSBuild >= 20231 || this.ComVersion >= 2)
 			{
 				this._name = this.Invoke<HString>(Args(), "GetName");
@@ -83,6 +76,8 @@ namespace WindowsDesktop
 				}
 			}
 		}
+
+		private VirtualDesktopProvider ProviderOwner => this._provider ?? ProviderInternal;
 
 		/// <summary>
 		/// Switches to this virtual desktop.
@@ -223,25 +218,11 @@ namespace WindowsDesktop
 			}
 		}
 
-		private void SetNameToCache(string name)
-		{
-			if (this._name == name) return;
+		internal void CommitNameMirror(string name) => this._name = name;
 
-			this.RaisePropertyChanging(nameof(this.Name));
-			this._name = name;
-			this.RaisePropertyChanged(nameof(this.Name));
-		}
+		internal void CommitWallpaperMirror(string path) => this._wallpaperPath = path;
 
-		private void SetDesktopWallpaperToCache(string path)
-		{
-			if (this._wallpaperPath == path) return;
-
-			this.RaisePropertyChanging(nameof(this.WallpaperPath));
-			this._wallpaperPath = path;
-			this.RaisePropertyChanged(nameof(this.WallpaperPath));
-		}
-		
-#region IDisposable
+		#region IDisposable
 		private bool _disposed = false;
 
 		/// <summary>
@@ -269,6 +250,6 @@ namespace WindowsDesktop
 			this.Dispose(true);
 			GC.SuppressFinalize(this);
 		}
-#endregion
+		#endregion
 	}
 }

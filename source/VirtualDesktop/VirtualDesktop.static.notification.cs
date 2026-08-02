@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using WindowsDesktop.Interop;
+using WindowsDesktop.Internal;
 
 namespace WindowsDesktop
 {
@@ -57,82 +58,105 @@ namespace WindowsDesktop
 
 		internal static class EventRaiser
 		{
-			public static void RaiseCreated(object sender, VirtualDesktop pDesktop)
+			internal static void Publish(VirtualDesktopProvider provider, VirtualDesktopCallbackDto dto, object sender, VirtualDesktopEventPipeline pipeline, ExceptionCollector exceptions, long sequence)
 			{
-				_desktopCaches = null;
-				History.Add(pDesktop);
-
-				Created?.Invoke(sender, pDesktop);
+				switch (dto.Kind)
+				{
+					case VirtualDesktopCallbackKind.Created:
+						{
+							if (!TryResolve(provider, pipeline, dto.DesktopId.Value, false, VirtualDesktopProviderEventKind.Created, sequence, out var desktop)) break;
+							_desktopCaches = null;
+							History.AddIfInitialized(desktop);
+							Invoke(Created, sender, desktop, pipeline, exceptions, VirtualDesktopProviderEventKind.Created, desktop.Id, sequence);
+							break;
+						}
+					case VirtualDesktopCallbackKind.DestroyBegin:
+					case VirtualDesktopCallbackKind.DestroyFailed:
+					case VirtualDesktopCallbackKind.Destroyed:
+						{
+							var eventKind = VirtualDesktopEventPipeline.ToPublicKind(dto.Kind);
+							var managedOnly = dto.Kind == VirtualDesktopCallbackKind.Destroyed;
+							if (!TryResolve(provider, pipeline, dto.DesktopId.Value, managedOnly, eventKind, sequence, out var desktop)) break;
+							if (!TryResolve(provider, pipeline, dto.RelatedDesktopId.Value, false, eventKind, sequence, out var fallback)) break;
+							if (dto.Kind == VirtualDesktopCallbackKind.Destroyed) { _desktopCaches = null; History.RemoveIfInitialized(desktop); }
+							var args = new VirtualDesktopDestroyEventArgs(desktop, fallback);
+							if (dto.Kind == VirtualDesktopCallbackKind.DestroyBegin) Invoke(DestroyBegin, sender, args, pipeline, exceptions, VirtualDesktopProviderEventKind.DestroyBegin, desktop.Id, sequence);
+							else if (dto.Kind == VirtualDesktopCallbackKind.DestroyFailed) Invoke(DestroyFailed, sender, args, pipeline, exceptions, VirtualDesktopProviderEventKind.DestroyFailed, desktop.Id, sequence);
+							else
+							{
+								Invoke(Destroyed, sender, args, pipeline, exceptions, VirtualDesktopProviderEventKind.Destroyed, desktop.Id, sequence);
+								provider.RemoveDesktop(desktop.Id);
+							}
+							break;
+						}
+					case VirtualDesktopCallbackKind.Moved:
+						{
+							if (!TryResolve(provider, pipeline, dto.DesktopId.Value, false, VirtualDesktopProviderEventKind.Moved, sequence, out var desktop)) break;
+							_desktopCaches = null;
+							Invoke(Moved, sender, new VirtualDesktopMovedEventArgs(desktop, dto.OldIndex.Value, dto.NewIndex.Value), pipeline, exceptions, VirtualDesktopProviderEventKind.Moved, desktop.Id, sequence);
+							break;
+						}
+					case VirtualDesktopCallbackKind.ApplicationViewChanged:
+						Invoke(ApplicationViewChanged, sender, EventArgs.Empty, pipeline, exceptions, VirtualDesktopProviderEventKind.ApplicationViewChanged, null, sequence);
+						break;
+					case VirtualDesktopCallbackKind.CurrentChanged:
+						{
+							if (!TryResolve(provider, pipeline, dto.DesktopId.Value, false, VirtualDesktopProviderEventKind.CurrentChanged, sequence, out var oldDesktop)) break;
+							if (!TryResolve(provider, pipeline, dto.RelatedDesktopId.Value, false, VirtualDesktopProviderEventKind.CurrentChanged, sequence, out var newDesktop)) break;
+							History.SetPreviousIfInitialized(oldDesktop);
+							Invoke(CurrentChanged, sender, new VirtualDesktopChangedEventArgs(oldDesktop, newDesktop), pipeline, exceptions, VirtualDesktopProviderEventKind.CurrentChanged, newDesktop.Id, sequence);
+							break;
+						}
+					case VirtualDesktopCallbackKind.Renamed:
+						if (pipeline.Mode == VirtualDesktopEventMode.LegacyInline
+							&& TryResolve(provider, pipeline, dto.DesktopId.Value, false, VirtualDesktopProviderEventKind.Renamed, sequence, out var renamedDesktop))
+							pipeline.ApplyLegacyNameNotification(renamedDesktop, dto.Value, sender, exceptions, sequence);
+						break;
+					case VirtualDesktopCallbackKind.WallpaperChanged:
+						if (pipeline.Mode == VirtualDesktopEventMode.LegacyInline
+							&& TryResolve(provider, pipeline, dto.DesktopId.Value, false, VirtualDesktopProviderEventKind.WallpaperChanged, sequence, out var wallpaperDesktop))
+							pipeline.ApplyLegacyWallpaperNotification(wallpaperDesktop, dto.Value, sender, exceptions, sequence);
+						break;
+					case VirtualDesktopCallbackKind.DesktopSwitched:
+						{
+							if (!TryResolve(provider, pipeline, dto.DesktopId.Value, false, VirtualDesktopProviderEventKind.DesktopSwitched, sequence, out var desktop)) break;
+							Invoke(DesktopSwitched, sender, desktop, pipeline, exceptions, VirtualDesktopProviderEventKind.DesktopSwitched, desktop.Id, sequence);
+							break;
+						}
+					case VirtualDesktopCallbackKind.RemoteDesktopConnected:
+						{
+							if (!TryResolve(provider, pipeline, dto.DesktopId.Value, false, VirtualDesktopProviderEventKind.RemoteDesktopConnected, sequence, out var desktop)) break;
+							Invoke(RemoteDesktopConnected, sender, desktop, pipeline, exceptions, VirtualDesktopProviderEventKind.RemoteDesktopConnected, desktop.Id, sequence);
+							break;
+						}
+				}
 			}
 
-			public static void RaiseDestroyBegin(object sender, VirtualDesktop pDesktopDestroyed, VirtualDesktop pDesktopFallback)
+			private static bool TryResolve(VirtualDesktopProvider provider, VirtualDesktopEventPipeline pipeline, Guid id, bool managedOnly, VirtualDesktopProviderEventKind kind, long sequence, out VirtualDesktop desktop)
 			{
-				var args = new VirtualDesktopDestroyEventArgs(pDesktopDestroyed, pDesktopFallback);
-				DestroyBegin?.Invoke(sender, args);
+				if (provider.TryResolveDesktop(id, managedOnly, out desktop, out var error)) return true;
+				pipeline.ReportFault(VirtualDesktopProviderFaultPhase.EventDispatch, kind, id, error ?? new InvalidOperationException("A callback desktop could not be resolved."), sequence);
+				return false;
 			}
 
-			public static void RaiseDestroyFailed(object sender, VirtualDesktop pDesktopDestroyed, VirtualDesktop pDesktopFallback)
+			internal static void RaiseRenamed(object sender, VirtualDesktop desktop, string oldName, string newName, VirtualDesktopEventPipeline pipeline, ExceptionCollector exceptions, long sequence)
+				=> Invoke(Renamed, sender, new VirtualDesktopRenamedEventArgs(desktop, oldName, newName), pipeline, exceptions, VirtualDesktopProviderEventKind.Renamed, desktop.Id, sequence);
+
+			internal static void RaiseWallpaperChanged(object sender, VirtualDesktop desktop, string oldPath, string newPath, VirtualDesktopEventPipeline pipeline, ExceptionCollector exceptions, long sequence)
+				=> Invoke(WallpaperChanged, sender, new VirtualDesktopWallpaperChangedEventArgs(desktop, oldPath, newPath), pipeline, exceptions, VirtualDesktopProviderEventKind.WallpaperChanged, desktop.Id, sequence);
+
+			private static void Invoke<T>(EventHandler<T> handlers, object sender, T args, VirtualDesktopEventPipeline pipeline, ExceptionCollector exceptions, VirtualDesktopProviderEventKind kind, Guid? desktopId, long sequence)
 			{
-				var args = new VirtualDesktopDestroyEventArgs(pDesktopDestroyed, pDesktopFallback);
-				DestroyFailed?.Invoke(sender, args);
+				if (handlers == null) return;
+				foreach (EventHandler<T> handler in handlers.GetInvocationList())
+					pipeline.InvokeSubscriber(handler, () => handler(sender, args), VirtualDesktopProviderFaultPhase.EventDispatch, kind, desktopId, sequence, exceptions);
 			}
 
-			public static void RaiseDestroyed(object sender, VirtualDesktop pDesktopDestroyed, VirtualDesktop pDesktopFallback)
+			private static void Invoke(EventHandler handlers, object sender, EventArgs args, VirtualDesktopEventPipeline pipeline, ExceptionCollector exceptions, VirtualDesktopProviderEventKind kind, Guid? desktopId, long sequence)
 			{
-				_desktopCaches = null;
-				History.Remove(pDesktopDestroyed);
-
-				var args = new VirtualDesktopDestroyEventArgs(pDesktopDestroyed, pDesktopFallback);
-				Destroyed?.Invoke(sender, args);
-			}
-
-			public static void RaiseApplicationViewChanged(object sender, object pView)
-			{
-				ApplicationViewChanged?.Invoke(sender, EventArgs.Empty);
-			}
-
-			public static void RaiseCurrentChanged(object sender, VirtualDesktop pDesktopOld, VirtualDesktop pDesktopNew)
-			{
-				History.SetPrevious(pDesktopOld);
-
-				var args = new VirtualDesktopChangedEventArgs(pDesktopOld, pDesktopNew);
-				CurrentChanged?.Invoke(sender, args);
-			}
-
-			public static void RaiseMoved(object sender, VirtualDesktop pDesktopMoved, int oldIndex, int newIndex)
-			{
-				_desktopCaches = null;
-
-				var args = new VirtualDesktopMovedEventArgs(pDesktopMoved, oldIndex, newIndex);
-				Moved?.Invoke(sender, args);
-			}
-
-			public static void RaiseRenamed(object sender, VirtualDesktop pDesktop, string name)
-			{
-				var oldName = pDesktop.Name;
-				pDesktop.SetNameToCache(name);
-
-				var args = new VirtualDesktopRenamedEventArgs(pDesktop, oldName, name);
-				Renamed?.Invoke(sender, args);
-			}
-
-			public static void RaiseWallpaperChanged(object sender, VirtualDesktop pDesktop, string path)
-			{
-				var oldPath = pDesktop.WallpaperPath;
-				pDesktop.SetDesktopWallpaperToCache(path);
-
-				var args = new VirtualDesktopWallpaperChangedEventArgs(pDesktop, oldPath, path);
-				WallpaperChanged?.Invoke(sender, args);
-			}
-
-			public static void RaiseDesktopSwitched(object sender, VirtualDesktop pDesktop)
-			{
-				DesktopSwitched?.Invoke(sender, pDesktop);
-			}
-
-			public static void RaiseRemoteDesktopConnected(object sender, VirtualDesktop pDesktop)
-			{
-				RemoteDesktopConnected?.Invoke(sender, pDesktop);
+				if (handlers == null) return;
+				foreach (EventHandler handler in handlers.GetInvocationList())
+					pipeline.InvokeSubscriber(handler, () => handler(sender, args), VirtualDesktopProviderFaultPhase.EventDispatch, kind, desktopId, sequence, exceptions);
 			}
 		}
 	}

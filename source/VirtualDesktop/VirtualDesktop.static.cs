@@ -181,6 +181,16 @@ namespace WindowsDesktop
 		internal void SetPrevious(VirtualDesktop prev)
 		{
 			var list = this.List;
+			this.SetPreviousCore(prev, list);
+		}
+
+		internal void SetPreviousIfInitialized(VirtualDesktop prev)
+		{
+			if (this._list != null) this.SetPreviousCore(prev, this._list);
+		}
+
+		private void SetPreviousCore(VirtualDesktop prev, List<VirtualDesktop> list)
+		{
 			for (var oldIndex = list.Count - 1; oldIndex > 0; oldIndex--)
 			{
 				if (list[oldIndex] != prev) continue;
@@ -199,9 +209,19 @@ namespace WindowsDesktop
 			this.List.Add(desktop);
 		}
 
+		internal void AddIfInitialized(VirtualDesktop desktop)
+		{
+			this._list?.Add(desktop);
+		}
+
 		internal void Remove(VirtualDesktop desktop)
 		{
 			this.List.Remove(desktop);
+		}
+
+		internal void RemoveIfInitialized(VirtualDesktop desktop)
+		{
+			this._list?.Remove(desktop);
 		}
 
 		private void Initialize()

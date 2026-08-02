@@ -16,7 +16,7 @@ namespace WindowsDesktop
 	{
 		private static IVirtualDesktopCache _cache;
 
-		public static void Initialize(ComInterfaceAssembly assembly)
+		public static void Initialize(ComInterfaceAssembly assembly, VirtualDesktopProvider provider)
 		{
 			if (_cache == null)
 			{
@@ -24,19 +24,18 @@ namespace WindowsDesktop
 				if (type2 != null)
 				{
 					_cache = (IVirtualDesktopCache)Activator.CreateInstance(type2);
-					_cache.Factory = (id, comObject) => new VirtualDesktop(assembly, id, comObject);
 				}
 				else
 				{
 					var type = assembly.GetType("VirtualDesktopCacheImpl");
 					_cache = (IVirtualDesktopCache)Activator.CreateInstance(type);
-					_cache.Factory = (id, comObject) => new VirtualDesktop(assembly, id, comObject);
 				}
 			}
 			else
 			{
 				_cache.Clear();
 			}
+			_cache.Factory = (id, comObject) => new VirtualDesktop(provider, assembly, id, comObject);
 
 			ImmersiveShellHandle = NativeMethods.FindWindow(NativeMethods.ImmersiveShellClassName, null);
 			TaskbarHandle = NativeMethods.FindWindow(NativeMethods.TaskbarClassName, null);

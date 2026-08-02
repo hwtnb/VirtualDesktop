@@ -2,12 +2,12 @@
 	<PropertyGroup>
 		<TargetFrameworks>net48;net10.0-windows10.0.26100.0</TargetFrameworks>
 		<Platforms>x86;x64</Platforms>
+		<UseWPF>true</UseWPF>
 		<IsPackable>false</IsPackable>
 		<OutputType>Exe</OutputType>
-		<AssemblyName>VirtualDesktop.Tests</AssemblyName>
-		<RootNamespace>WindowsDesktop.Tests</RootNamespace>
+		<AssemblyName>VirtualDesktop.WPF.Tests</AssemblyName>
+		<RootNamespace>WindowsDesktop.WPF.Tests</RootNamespace>
 		<NoWarn>$(NoWarn);xUnit1051</NoWarn>
-		<ApplicationManifest>app.manifest</ApplicationManifest>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Platform)' == 'x86'">
 		<PlatformTarget>x86</PlatformTarget>
@@ -24,5 +24,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\VirtualDesktop\VirtualDesktop.csproj" />
+		<ProjectReference Include="..\VirtualDesktop.WPF\VirtualDesktop.WPF.csproj" />
 	</ItemGroup>
 </Project>

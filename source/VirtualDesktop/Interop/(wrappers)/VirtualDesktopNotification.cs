@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
+using WindowsDesktop.Internal;
 
 namespace WindowsDesktop.Interop
 {
@@ -9,78 +10,94 @@ namespace WindowsDesktop.Interop
 	[UsedImplicitly(ImplicitUseTargetFlags.Members)]
 	public abstract class VirtualDesktopNotification
 	{
-		internal static VirtualDesktopNotification CreateInstance(ComInterfaceAssembly assembly)
+		private VirtualDesktopCallbackMaterializer _materializer;
+		private VirtualDesktopEventPipeline _pipeline;
+
+		internal static VirtualDesktopNotification CreateInstance(ComInterfaceAssembly assembly, VirtualDesktopEventPipeline pipeline)
 		{
 			var type2 = assembly.GetType("VirtualDesktopNotificationListener2");
 			if (type2 != null)
 			{
 				var instance = (VirtualDesktopNotification)Activator.CreateInstance(type2);
+				instance.Initialize(assembly, pipeline);
 				return instance;
 			}
 			else
 			{
 				var type = assembly.GetType("VirtualDesktopNotificationListener");
 				var instance = (VirtualDesktopNotification)Activator.CreateInstance(type);
+				instance.Initialize(assembly, pipeline);
 				return instance;
 			}
 		}
 
-		protected VirtualDesktop GetDesktop(object comObject)
-			=> VirtualDesktopCache.GetOrCreate(comObject);
+		private void Initialize(ComInterfaceAssembly assembly, VirtualDesktopEventPipeline pipeline)
+		{
+			this._materializer = new VirtualDesktopCallbackMaterializer(assembly);
+			this._pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
+		}
+
+		private void Capture(VirtualDesktopCallbackKind kind, Func<VirtualDesktopCallbackDto> capture)
+		{
+			VirtualDesktopCallbackDto dto;
+			try { dto = capture(); }
+			catch (Exception ex) { this._pipeline.ReportMaterializationFailure(kind, ex); return; }
+			this._pipeline.Accept(dto, this);
+		}
 
 		protected void VirtualDesktopCreatedCore(object pDesktop)
 		{
-			VirtualDesktop.EventRaiser.RaiseCreated(this, VirtualDesktopCache.GetOrCreate(pDesktop));
+			this.Capture(VirtualDesktopCallbackKind.Created, () => this._materializer.One(VirtualDesktopCallbackKind.Created, pDesktop));
 		}
 
 		protected void VirtualDesktopDestroyBeginCore(object pDesktopDestroyed, object pDesktopFallback)
 		{
-			VirtualDesktop.EventRaiser.RaiseDestroyBegin(this, VirtualDesktopCache.GetOrCreate(pDesktopDestroyed), VirtualDesktopCache.GetOrCreate(pDesktopFallback));
+			this.Capture(VirtualDesktopCallbackKind.DestroyBegin, () => this._materializer.Two(VirtualDesktopCallbackKind.DestroyBegin, pDesktopDestroyed, pDesktopFallback));
 		}
 
 		protected void VirtualDesktopDestroyFailedCore(object pDesktopDestroyed, object pDesktopFallback)
 		{
-			VirtualDesktop.EventRaiser.RaiseDestroyFailed(this, VirtualDesktopCache.GetOrCreate(pDesktopDestroyed), VirtualDesktopCache.GetOrCreate(pDesktopFallback));
+			this.Capture(VirtualDesktopCallbackKind.DestroyFailed, () => this._materializer.Two(VirtualDesktopCallbackKind.DestroyFailed, pDesktopDestroyed, pDesktopFallback));
 		}
 
 		protected void VirtualDesktopDestroyedCore(object pDesktopDestroyed, object pDesktopFallback)
 		{
-			VirtualDesktop.EventRaiser.RaiseDestroyed(this, VirtualDesktopCache.GetOrCreate(pDesktopDestroyed), VirtualDesktopCache.GetOrCreate(pDesktopFallback));
+			this.Capture(VirtualDesktopCallbackKind.Destroyed, () => this._materializer.Two(VirtualDesktopCallbackKind.Destroyed, pDesktopDestroyed, pDesktopFallback));
 		}
 
 		protected void VirtualDesktopMovedCore(object pDesktop, int nFromIndex, int nToIndex)
 		{
-			VirtualDesktop.EventRaiser.RaiseMoved(this, VirtualDesktopCache.GetOrCreate(pDesktop), nFromIndex, nToIndex);
+			this.Capture(VirtualDesktopCallbackKind.Moved, () => this._materializer.Move(pDesktop, nFromIndex, nToIndex));
 		}
 
 		protected void ViewVirtualDesktopChangedCore(object pView)
 		{
-			VirtualDesktop.EventRaiser.RaiseApplicationViewChanged(this, pView);
+			this.Capture(VirtualDesktopCallbackKind.ApplicationViewChanged, this._materializer.ApplicationViewChanged);
 		}
 
 		protected void CurrentVirtualDesktopChangedCore(object pDesktopOld, object pDesktopNew)
 		{
-			VirtualDesktop.EventRaiser.RaiseCurrentChanged(this, VirtualDesktopCache.GetOrCreate(pDesktopOld), VirtualDesktopCache.GetOrCreate(pDesktopNew));
+			this.Capture(VirtualDesktopCallbackKind.CurrentChanged, () => this._materializer.Two(VirtualDesktopCallbackKind.CurrentChanged, pDesktopOld, pDesktopNew));
 		}
 
 		protected void VirtualDesktopRenamedCore(object pDesktop, HString chName)
 		{
-			VirtualDesktop.EventRaiser.RaiseRenamed(this, VirtualDesktopCache.GetOrCreate(pDesktop), chName);
+			this.Capture(VirtualDesktopCallbackKind.Renamed, () => this._materializer.Property(VirtualDesktopCallbackKind.Renamed, pDesktop, (string)chName));
 		}
 
 		protected void VirtualDesktopWallpaperChangedCore(object pDesktop, HString chPath)
 		{
-			VirtualDesktop.EventRaiser.RaiseWallpaperChanged(this, VirtualDesktopCache.GetOrCreate(pDesktop), chPath);
+			this.Capture(VirtualDesktopCallbackKind.WallpaperChanged, () => this._materializer.Property(VirtualDesktopCallbackKind.WallpaperChanged, pDesktop, (string)chPath));
 		}
 
 		protected void VirtualDesktopSwitchedCore(object pDesktop)
 		{
-			VirtualDesktop.EventRaiser.RaiseDesktopSwitched(this, VirtualDesktopCache.GetOrCreate(pDesktop));
+			this.Capture(VirtualDesktopCallbackKind.DesktopSwitched, () => this._materializer.One(VirtualDesktopCallbackKind.DesktopSwitched, pDesktop));
 		}
 
 		protected void RemoteVirtualDesktopConnectedCore(object pDesktop)
 		{
-			VirtualDesktop.EventRaiser.RaiseRemoteDesktopConnected(this, VirtualDesktopCache.GetOrCreate(pDesktop));
+			this.Capture(VirtualDesktopCallbackKind.RemoteDesktopConnected, () => this._materializer.One(VirtualDesktopCallbackKind.RemoteDesktopConnected, pDesktop));
 		}
 	}
 }

@@ -11,6 +11,8 @@ namespace WindowsDesktop.Interop
 	internal class ComObjects : IDisposable
 	{
 		private readonly ComInterfaceAssembly _assembly;
+		private readonly VirtualDesktopProvider _provider;
+		private readonly VirtualDesktopEventPipeline _eventPipeline;
 		private ExplorerRestartListenerWindow _listenerWindow;
 		private IDisposable _listener;
 
@@ -26,9 +28,11 @@ namespace WindowsDesktop.Interop
 
 		public bool IsAvailable { get; private set; } = false;
 
-		public ComObjects(ComInterfaceAssembly assembly)
+		public ComObjects(ComInterfaceAssembly assembly, VirtualDesktopProvider provider, VirtualDesktopEventPipeline eventPipeline)
 		{
 			this._assembly = assembly;
+			this._provider = provider ?? throw new ArgumentNullException(nameof(provider));
+			this._eventPipeline = eventPipeline ?? throw new ArgumentNullException(nameof(eventPipeline));
 			this.Initialize();
 		}
 
@@ -42,7 +46,7 @@ namespace WindowsDesktop.Interop
 		{
 			this.IsAvailable = false;
 			VirtualDesktop.ClearCaches();
-			VirtualDesktopCache.Initialize(this._assembly);
+			VirtualDesktopCache.Initialize(this._assembly, this._provider);
 
 			this.VirtualDesktopManager = (IVirtualDesktopManager)Activator.CreateInstance(Type.GetTypeFromCLSID(CLSID.VirtualDesktopManager));
 			if (ProductInfo.OSBuild >= 26100)
@@ -86,7 +90,7 @@ namespace WindowsDesktop.Interop
 			this.ApplicationViewCollection = new ApplicationViewCollection(this._assembly);
 
 			this._listener?.Dispose();
-			this._listener = this.VirtualDesktopNotificationService.Register(VirtualDesktopNotification.CreateInstance(this._assembly));
+			this._listener = this.VirtualDesktopNotificationService.Register(VirtualDesktopNotification.CreateInstance(this._assembly, this._eventPipeline));
 			this.IsAvailable = true;
 		}
 
