@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
@@ -111,6 +111,7 @@ namespace WindowsDesktop.Internal
 		private readonly IEventScheduler _scheduler;
 		private readonly Action<SequencedEvent<T>> _consumer;
 		private readonly Action<Exception, long> _faultSink;
+		private readonly Action<SequencedEvent<T>> _accepted;
 		private readonly int _capacity;
 		private long _nextSequence;
 		private long _nextGeneration;
@@ -129,12 +130,13 @@ namespace WindowsDesktop.Internal
 		private EventPumpState _state = EventPumpState.Ready;
 		private EventScheduledOperation _operation;
 
-		internal EventIngress(IEventScheduler scheduler, Action<SequencedEvent<T>> consumer, Action<Exception, long> faultSink, int capacity = DefaultCapacity)
+		internal EventIngress(IEventScheduler scheduler, Action<SequencedEvent<T>> consumer, Action<Exception, long> faultSink, int capacity = DefaultCapacity, Action<SequencedEvent<T>> accepted = null)
 		{
 			if (capacity <= 0) throw new ArgumentOutOfRangeException(nameof(capacity));
 			this._scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
 			this._consumer = consumer ?? throw new ArgumentNullException(nameof(consumer));
 			this._faultSink = faultSink ?? ((_, __) => { });
+			this._accepted = accepted;
 			this._capacity = capacity;
 		}
 
@@ -169,7 +171,9 @@ namespace WindowsDesktop.Internal
 				}
 				else
 				{
-					this._queue.Enqueue(new SequencedEvent<T>(sequence, value));
+					var item = new SequencedEvent<T>(sequence, value);
+					this._queue.Enqueue(item);
+					this._accepted?.Invoke(item);
 					if (!this._scheduled)
 					{
 						this._scheduled = true;

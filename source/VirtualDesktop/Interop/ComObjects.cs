@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -15,6 +15,7 @@ namespace WindowsDesktop.Interop
 		private readonly VirtualDesktopEventPipeline _eventPipeline;
 		private ExplorerRestartListenerWindow _listenerWindow;
 		private IDisposable _listener;
+		private bool _initialized;
 
 		public IVirtualDesktopManager VirtualDesktopManager { get; private set; }
 
@@ -44,6 +45,8 @@ namespace WindowsDesktop.Interop
 
 		private void Initialize()
 		{
+			var reset = this._initialized;
+			if (reset) this._provider.ResetRuntime(false);
 			this.IsAvailable = false;
 			VirtualDesktop.ClearCaches();
 			VirtualDesktopCache.Initialize(this._assembly, this._provider);
@@ -92,6 +95,8 @@ namespace WindowsDesktop.Interop
 			this._listener?.Dispose();
 			this._listener = this.VirtualDesktopNotificationService.Register(VirtualDesktopNotification.CreateInstance(this._assembly, this._eventPipeline));
 			this.IsAvailable = true;
+			this._initialized = true;
+			if (reset) this._provider.OnRuntimeInitialized();
 		}
 
 		public void Dispose()

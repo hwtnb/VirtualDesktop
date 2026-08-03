@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using WindowsDesktop.Interop;
 
@@ -13,7 +13,12 @@ namespace WindowsDesktop.Internal
 		void SetDesktopWallpaper(VirtualDesktop desktop, string value);
 	}
 
-	internal sealed class ComVirtualDesktopProviderRuntime : IVirtualDesktopProviderRuntime
+	internal interface IVirtualDesktopProviderRuntimeReset
+	{
+		void ResetManagedDesktops();
+	}
+
+	internal sealed class ComVirtualDesktopProviderRuntime : IVirtualDesktopProviderRuntime, IVirtualDesktopProviderRuntimeReset
 	{
 		private readonly object _gate = new object();
 		private readonly Dictionary<Guid, VirtualDesktop> _managedDesktops = new Dictionary<Guid, VirtualDesktop>();
@@ -46,6 +51,11 @@ namespace WindowsDesktop.Internal
 		public void RemoveDesktop(Guid id)
 		{
 			lock (this._gate) this._managedDesktops.Remove(id);
+		}
+
+		public void ResetManagedDesktops()
+		{
+			lock (this._gate) this._managedDesktops.Clear();
 		}
 
 		public void SetDesktopName(VirtualDesktop desktop, string value)

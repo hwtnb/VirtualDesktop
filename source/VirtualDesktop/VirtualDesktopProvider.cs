@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -9,7 +9,7 @@ using WindowsDesktop.Properties;
 
 namespace WindowsDesktop
 {
-	public class VirtualDesktopProvider : IDisposable
+	public partial class VirtualDesktopProvider : IDisposable
 	{
 		#region Default instance
 
@@ -31,15 +31,25 @@ namespace WindowsDesktop
 		private static HashSet<VirtualDesktopProvider> _faultingProviders;
 
 		public event EventHandler<VirtualDesktopProviderFault> EventDispatchFaulted;
+		public event EventHandler<VirtualDesktopStableBatch> StableBatchPublished;
+		public event EventHandler<VirtualDesktopCurrentTransition> CurrentTransitioned;
 
 		public VirtualDesktopProvider()
 		{
 			this._runtime = new ComVirtualDesktopProviderRuntime(this);
+			this.InitializeReconciliation(new ProviderVirtualDesktopSnapshotCapture(this), new TimerReconciliationDelayScheduler(), ReconciliationRetryPolicy.Default, false);
 		}
 
 		internal VirtualDesktopProvider(IVirtualDesktopProviderRuntime runtime)
 		{
 			this._runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+			this.InitializeReconciliation(new ProviderVirtualDesktopSnapshotCapture(this), new TimerReconciliationDelayScheduler(), ReconciliationRetryPolicy.Default, false);
+		}
+
+		internal VirtualDesktopProvider(IVirtualDesktopProviderRuntime runtime, IVirtualDesktopSnapshotCapture snapshotCapture, IReconciliationDelayScheduler delayScheduler, ReconciliationRetryPolicy retryPolicy)
+		{
+			this._runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+			this.InitializeReconciliation(snapshotCapture, delayScheduler, retryPolicy, true);
 		}
 
 		public string ComInterfaceAssemblyPath { get; set; }
@@ -87,6 +97,7 @@ namespace WindowsDesktop
 				var assembly = new ComInterfaceAssembly(assemblyProvider.GetAssembly());
 
 				this.ComObjects = new ComObjects(assembly, this, this._eventPipeline);
+				this.OnRuntimeInitialized();
 			}
 		}
 
@@ -124,7 +135,11 @@ namespace WindowsDesktop
 			try
 			{
 				error = null;
-				return this._runtime.TryResolveDesktop(id, managedOnly, out desktop);
+				if (!this._runtime.TryResolveDesktop(id, managedOnly, out desktop)) return false;
+				if (desktop.ProviderEpoch == this.CurrentProviderEpoch) return true;
+				desktop = null;
+				error = new InvalidOperationException("The resolved virtual desktop belongs to an inactive provider epoch.");
+				return false;
 			}
 			catch (Exception ex)
 			{
@@ -134,12 +149,18 @@ namespace WindowsDesktop
 			}
 		}
 
-		internal void RegisterDesktop(VirtualDesktop desktop) => this._runtime.RegisterDesktop(desktop);
+		internal void RegisterDesktop(VirtualDesktop desktop)
+		{
+			this.BindDesktopToCurrentEpoch(desktop);
+			this._runtime.RegisterDesktop(desktop);
+			this.SeedManagedDesktop(desktop);
+		}
 
 		internal void RemoveDesktop(Guid id) => this._runtime.RemoveDesktop(id);
 
 		internal void SetDesktopName(VirtualDesktop desktop, string value)
 		{
+			this.ValidateDesktopEpoch(desktop);
 			var pipeline = this.EventPipeline;
 			pipeline.ExecuteSetter(
 				() =>
@@ -147,11 +168,13 @@ namespace WindowsDesktop
 					if (ProductInfo.OSBuild < 20231 && desktop.ComVersion < 2) throw new PlatformNotSupportedException("This Windows 10 version is not supported.");
 					this._runtime.SetDesktopName(desktop, value);
 				},
-				() => pipeline.ApplyLocalName(desktop, value));
+				() => pipeline.ApplyLocalName(desktop, value),
+				() => this.RecordLocalWrite(desktop, VirtualDesktopPropertyKind.Name, value));
 		}
 
 		internal void SetDesktopWallpaper(VirtualDesktop desktop, string value)
 		{
+			this.ValidateDesktopEpoch(desktop);
 			var pipeline = this.EventPipeline;
 			pipeline.ExecuteSetter(
 				() =>
@@ -159,7 +182,8 @@ namespace WindowsDesktop
 					if (ProductInfo.OSBuild < 21313) throw new PlatformNotSupportedException("This Windows 10 version is not supported.");
 					this._runtime.SetDesktopWallpaper(desktop, value);
 				},
-				() => pipeline.ApplyLocalWallpaper(desktop, value));
+				() => pipeline.ApplyLocalWallpaper(desktop, value),
+				() => this.RecordLocalWrite(desktop, VirtualDesktopPropertyKind.WallpaperPath, value));
 		}
 
 		internal void ReportEventFault(VirtualDesktopProviderFault fault)
@@ -187,15 +211,16 @@ namespace WindowsDesktop
 			return assemblyProvider.TryDeleteAssembly();
 		}
 
-		internal VirtualDesktopSnapshotBatch CaptureSnapshot()
+		internal VirtualDesktopSnapshotBatch CaptureSnapshotCore()
 			=> this.ComObjects.VirtualDesktopManagerInternal.CaptureSnapshot();
 
 		public void Dispose()
 		{
 			if (Interlocked.Exchange(ref this._disposeSignaled, 1) != 0) return;
-			var pipeline = this._eventPipeline;
-			if (pipeline == null) this._comObjects?.Dispose();
-			else pipeline.Shutdown(() => this._comObjects?.Dispose());
+			var pipeline = this.EventPipeline;
+			pipeline.StopAccepting();
+			this.BeginReconciliationShutdown(pipeline.CanRunSynchronousShutdownCapture);
+			pipeline.Shutdown(() => this.CompleteReconciliationShutdown(() => this._comObjects?.Dispose()));
 		}
 	}
 

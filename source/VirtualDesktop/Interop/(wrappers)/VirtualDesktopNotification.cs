@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
@@ -12,6 +12,7 @@ namespace WindowsDesktop.Interop
 	{
 		private VirtualDesktopCallbackMaterializer _materializer;
 		private VirtualDesktopEventPipeline _pipeline;
+		private long _providerEpoch;
 
 		internal static VirtualDesktopNotification CreateInstance(ComInterfaceAssembly assembly, VirtualDesktopEventPipeline pipeline)
 		{
@@ -35,6 +36,7 @@ namespace WindowsDesktop.Interop
 		{
 			this._materializer = new VirtualDesktopCallbackMaterializer(assembly);
 			this._pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
+			this._providerEpoch = pipeline.CurrentProviderEpoch;
 		}
 
 		private void Capture(VirtualDesktopCallbackKind kind, Func<VirtualDesktopCallbackDto> capture)
@@ -42,7 +44,7 @@ namespace WindowsDesktop.Interop
 			VirtualDesktopCallbackDto dto;
 			try { dto = capture(); }
 			catch (Exception ex) { this._pipeline.ReportMaterializationFailure(kind, ex); return; }
-			this._pipeline.Accept(dto, this);
+			this._pipeline.Accept(dto.WithProviderEpoch(this._providerEpoch), this);
 		}
 
 		protected void VirtualDesktopCreatedCore(object pDesktop)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -18,6 +18,7 @@ namespace WindowsDesktop
 	public partial class VirtualDesktop : ComInterfaceWrapperBase, IDisposable
 	{
 		private VirtualDesktopProvider _provider;
+		private long _providerEpoch;
 		/// <summary>
 		/// Gets the unique identifier for this virtual desktop.
 		/// </summary>
@@ -78,6 +79,12 @@ namespace WindowsDesktop
 		}
 
 		private VirtualDesktopProvider ProviderOwner => this._provider ?? ProviderInternal;
+
+		internal long ProviderEpoch => this._providerEpoch;
+		internal void BindProviderEpoch(long providerEpoch)
+		{
+			if (this._providerEpoch == 0) this._providerEpoch = providerEpoch;
+		}
 
 		/// <summary>
 		/// Switches to this virtual desktop.

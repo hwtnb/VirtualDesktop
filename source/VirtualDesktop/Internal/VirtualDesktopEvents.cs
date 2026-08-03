@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using WindowsDesktop.Interop;
@@ -10,7 +10,7 @@ namespace WindowsDesktop.Internal
 
 	internal sealed class VirtualDesktopCallbackDto
 	{
-		internal VirtualDesktopCallbackDto(VirtualDesktopCallbackKind kind, Guid? desktopId = null, Guid? relatedDesktopId = null, int? oldIndex = null, int? newIndex = null, string value = null)
+		internal VirtualDesktopCallbackDto(VirtualDesktopCallbackKind kind, Guid? desktopId = null, Guid? relatedDesktopId = null, int? oldIndex = null, int? newIndex = null, string value = null, long providerEpoch = 0)
 		{
 			this.Kind = kind;
 			this.DesktopId = desktopId;
@@ -18,6 +18,7 @@ namespace WindowsDesktop.Internal
 			this.OldIndex = oldIndex;
 			this.NewIndex = newIndex;
 			this.Value = value;
+			this.ProviderEpoch = providerEpoch;
 		}
 
 		internal VirtualDesktopCallbackKind Kind { get; }
@@ -26,6 +27,9 @@ namespace WindowsDesktop.Internal
 		internal int? OldIndex { get; }
 		internal int? NewIndex { get; }
 		internal string Value { get; }
+		internal long ProviderEpoch { get; }
+		internal VirtualDesktopCallbackDto WithProviderEpoch(long providerEpoch)
+			=> new VirtualDesktopCallbackDto(this.Kind, this.DesktopId, this.RelatedDesktopId, this.OldIndex, this.NewIndex, this.Value, providerEpoch);
 	}
 
 	internal sealed class VirtualDesktopCallbackMaterializer
@@ -112,6 +116,7 @@ namespace WindowsDesktop.Internal
 		private Action _shutdownCompletion;
 		private int _callbackThreadId;
 		private int _callbackDepth;
+		private long _legacySequence;
 
 		internal VirtualDesktopEventPipeline(VirtualDesktopProvider provider, IEventScheduler scheduler)
 		{
@@ -120,7 +125,7 @@ namespace WindowsDesktop.Internal
 			this.Mode = scheduler == null ? VirtualDesktopEventMode.LegacyInline : VirtualDesktopEventMode.StrongScheduled;
 			if (scheduler != null)
 			{
-				this._ingress = new EventIngress<VirtualDesktopCallbackDto>(scheduler, item => this.Publish(item.Value, item.Sequence, false, this._provider), (exception, sequence) => this.ReportFault(VirtualDesktopProviderFaultPhase.Scheduling, VirtualDesktopProviderEventKind.Unknown, null, exception, sequence));
+				this._ingress = new EventIngress<VirtualDesktopCallbackDto>(scheduler, item => this.Publish(item.Value, item.Sequence, false, this._provider), (exception, sequence) => this.ReportFault(VirtualDesktopProviderFaultPhase.Scheduling, VirtualDesktopProviderEventKind.Unknown, null, exception, sequence, VirtualDesktopProviderFailureCategory.Scheduler), EventIngress<VirtualDesktopCallbackDto>.DefaultCapacity, item => this._provider.OnIngressAccepted(item.Value, item.Sequence));
 			}
 		}
 
@@ -128,17 +133,30 @@ namespace WindowsDesktop.Internal
 		internal int PendingCount => this._ingress?.PendingCount ?? 0;
 		internal int PostCount => this._ingress?.PostCount ?? 0;
 		internal EventPumpState PumpState => this._ingress?.State ?? EventPumpState.Ready;
+		internal long CurrentProviderEpoch => this._provider.CurrentProviderEpoch;
 		internal bool CheckAccess() => this._scheduler == null || this._scheduler.CheckAccess();
+		internal bool CanRunSynchronousShutdownCapture
+		{
+			get
+			{
+				if (!this.CheckAccess()) return false;
+				lock (this._callbackGate) return this._callbackDepth == 0;
+			}
+		}
 
 		internal EventEnqueueResult Accept(VirtualDesktopCallbackDto dto, object legacySender = null)
 		{
+			dto = this._provider.StampCallback(dto);
 			bool accepted;
+			long legacySequence = 0;
 			lock (this._acceptGate)
 			{
 				accepted = this._accepting;
 				if (accepted && this.Mode == VirtualDesktopEventMode.LegacyInline)
 				{
 					this._legacyPublicationsInFlight++;
+					legacySequence = ++this._legacySequence;
+					this._provider.OnIngressAccepted(dto, legacySequence);
 				}
 			}
 			if (!accepted)
@@ -150,8 +168,8 @@ namespace WindowsDesktop.Internal
 			{
 				try
 				{
-					this.Publish(dto, 0, true, legacySender ?? this._provider);
-					return new EventEnqueueResult(EventEnqueueStatus.Accepted, 0);
+					this.Publish(dto, legacySequence, true, legacySender ?? this._provider);
+					return new EventEnqueueResult(EventEnqueueStatus.Accepted, legacySequence);
 				}
 				finally { this.ReleaseLegacyPublication(); }
 			}
@@ -162,7 +180,10 @@ namespace WindowsDesktop.Internal
 		}
 
 		internal void ReportMaterializationFailure(VirtualDesktopCallbackKind kind, Exception exception)
-			=> this.ReportFault(VirtualDesktopProviderFaultPhase.CallbackMaterialization, ToPublicKind(kind), null, exception, 0);
+		{
+			this.ReportFault(VirtualDesktopProviderFaultPhase.CallbackMaterialization, ToPublicKind(kind), null, exception, 0, VirtualDesktopProviderFailureCategory.CallbackMaterialization);
+			this._provider.OnMaterializationFailure();
+		}
 
 		internal void Shutdown(Action completion = null)
 		{
@@ -199,13 +220,22 @@ namespace WindowsDesktop.Internal
 			}
 		}
 
-		internal void ExecuteSetter(Action comSetter, Action commit)
+		internal void ExecuteSetter(Action comSetter, Action commit, Action committed = null)
 		{
 			if (comSetter == null) throw new ArgumentNullException(nameof(comSetter));
 			if (commit == null) throw new ArgumentNullException(nameof(commit));
 			this.ValidateSetterAccess();
-			comSetter();
-			commit();
+			this._provider.EnterLocalSetter();
+			try
+			{
+				comSetter();
+				Exception commitError = null;
+				try { commit(); }
+				catch (Exception ex) { commitError = ex; }
+				committed?.Invoke();
+				if (commitError != null) throw commitError;
+			}
+			finally { this._provider.ExitLocalSetter(); }
 		}
 
 		internal void ApplyLocalName(VirtualDesktop desktop, string value)
@@ -213,6 +243,12 @@ namespace WindowsDesktop.Internal
 
 		internal void ApplyLocalWallpaper(VirtualDesktop desktop, string value)
 			=> this.ApplyLocalProperty(desktop, value, VirtualDesktopProviderEventKind.WallpaperChanged, (oldValue, newValue, exceptions, sequence) => VirtualDesktop.EventRaiser.RaiseWallpaperChanged(this._provider, desktop, oldValue, newValue, this, exceptions, sequence));
+
+		internal void ApplyReconciledName(VirtualDesktop desktop, string value, long sequence)
+			=> this.ApplyReconciledProperty(desktop, value, VirtualDesktopProviderEventKind.Renamed, sequence, (oldValue, newValue, exceptions) => VirtualDesktop.EventRaiser.RaiseRenamed(this._provider, desktop, oldValue, newValue, this, exceptions, sequence));
+
+		internal void ApplyReconciledWallpaper(VirtualDesktop desktop, string value, long sequence)
+			=> this.ApplyReconciledProperty(desktop, value, VirtualDesktopProviderEventKind.WallpaperChanged, sequence, (oldValue, newValue, exceptions) => VirtualDesktop.EventRaiser.RaiseWallpaperChanged(this._provider, desktop, oldValue, newValue, this, exceptions, sequence));
 
 		internal void ApplyLegacyNameNotification(VirtualDesktop desktop, string value, object sender, ExceptionCollector exceptions, long sequence)
 			=> this.ApplyLegacyProperty(desktop, value, VirtualDesktopProviderEventKind.Renamed, (oldValue, newValue) => VirtualDesktop.EventRaiser.RaiseRenamed(sender, desktop, oldValue, newValue, this, exceptions, sequence), exceptions, sequence);
@@ -228,21 +264,41 @@ namespace WindowsDesktop.Internal
 				try { invoke(); }
 				catch (Exception ex)
 				{
-					if (this.Mode == VirtualDesktopEventMode.StrongScheduled) this.ReportFault(phase, kind, desktopId, ex, sequence);
+					if (this.Mode == VirtualDesktopEventMode.StrongScheduled) this.ReportFault(phase, kind, desktopId, ex, sequence, VirtualDesktopProviderFailureCategory.Subscriber);
 					else exceptions.Add(ex);
 				}
 			}
 			finally { this.ExitCallback(); }
 		}
 
-		internal void ReportFault(VirtualDesktopProviderFaultPhase phase, VirtualDesktopProviderEventKind kind, Guid? desktopId, Exception exception, long sequence)
-			=> this._provider.ReportEventFault(new VirtualDesktopProviderFault(phase, kind, desktopId, exception.GetType().FullName, GetNativeErrorCode(exception), sequence));
+		internal void ReportFault(VirtualDesktopProviderFaultPhase phase, VirtualDesktopProviderEventKind kind, Guid? desktopId, Exception exception, long sequence, VirtualDesktopProviderFailureCategory category = VirtualDesktopProviderFailureCategory.Unknown)
+			=> this._provider.ReportEventFault(new VirtualDesktopProviderFault(phase, kind, desktopId, exception.GetType().FullName, GetNativeErrorCode(exception), sequence, category));
+
+		internal EventScheduledOperation PostOwner(Action action)
+		{
+			if (this._scheduler == null)
+			{
+				var inline = new EventScheduledOperation(EventScheduleInitialStatus.Accepted);
+				inline.MarkStarted();
+				try { action(); inline.MarkCompleted(); }
+				catch { inline.MarkAborted(); throw; }
+				return inline;
+			}
+			return this._scheduler.Post(action);
+		}
+
+		internal void StopAccepting()
+		{
+			lock (this._acceptGate) this._accepting = false;
+		}
 
 		private void Publish(VirtualDesktopCallbackDto dto, long sequence, bool rethrow, object sender)
 		{
 			var exceptions = new ExceptionCollector();
-			try { VirtualDesktop.EventRaiser.Publish(this._provider, dto, sender, this, exceptions, sequence); }
+			var publish = this._provider.OnIngressProcessing(dto, sequence);
+			try { if (publish) VirtualDesktop.EventRaiser.Publish(this._provider, dto, sender, this, exceptions, sequence); }
 			catch (Exception ex) { this.ReportFault(VirtualDesktopProviderFaultPhase.EventDispatch, ToPublicKind(dto.Kind), dto.DesktopId, ex, sequence); if (rethrow) exceptions.Add(ex); }
+			finally { this._provider.OnIngressProcessed(dto, sequence); }
 			if (rethrow) exceptions.ThrowFirst();
 		}
 
@@ -261,6 +317,13 @@ namespace WindowsDesktop.Internal
 			var oldValue = kind == VirtualDesktopProviderEventKind.Renamed ? desktop.Name : desktop.WallpaperPath;
 			this.ApplyPropertyCore(desktop, value, kind, null, exceptions, sequence);
 			publish(oldValue, value);
+		}
+
+		private void ApplyReconciledProperty(VirtualDesktop desktop, string value, VirtualDesktopProviderEventKind kind, long sequence, Action<string, string, ExceptionCollector> publish)
+		{
+			var exceptions = new ExceptionCollector();
+			this.ApplyPropertyCore(desktop, value, kind, (oldValue, newValue) => publish(oldValue, newValue, exceptions), exceptions, sequence);
+			foreach (var exception in exceptions.Items) this.ReportFault(VirtualDesktopProviderFaultPhase.EventDispatch, kind, desktop.Id, exception, sequence, VirtualDesktopProviderFailureCategory.Subscriber);
 		}
 
 		private void ApplyPropertyCore(VirtualDesktop desktop, string value, VirtualDesktopProviderEventKind kind, Action<string, string> publish, ExceptionCollector exceptions, long sequence)
@@ -348,8 +411,9 @@ namespace WindowsDesktop.Internal
 
 	internal sealed class ExceptionCollector
 	{
-		private Exception _first;
-		internal void Add(Exception exception) { if (this._first == null) this._first = exception; }
-		internal void ThrowFirst() { if (this._first != null) throw this._first; }
+		private readonly System.Collections.Generic.List<Exception> _items = new System.Collections.Generic.List<Exception>();
+		internal System.Collections.Generic.IReadOnlyList<Exception> Items => this._items;
+		internal void Add(Exception exception) { if (exception != null) this._items.Add(exception); }
+		internal void ThrowFirst() { if (this._items.Count != 0) throw this._items[0]; }
 	}
 }

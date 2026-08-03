@@ -101,6 +101,10 @@ namespace WindowsDesktop
 		CallbackMaterialization,
 		Subscriber,
 		ProviderReset,
+		RetryExhausted,
+		OldEpochDiscarded,
+		ShutdownUndrained,
+		ReconciliationUnavailable,
 	}
 
 	public sealed class VirtualDesktopReconciliationResult
@@ -157,7 +161,7 @@ namespace WindowsDesktop
 
 	public sealed class VirtualDesktopProviderFault
 	{
-		public VirtualDesktopProviderFault(VirtualDesktopProviderFaultPhase phase, VirtualDesktopProviderEventKind eventKind, Guid? desktopId, string exceptionType, int? nativeErrorCode, long sequence)
+		public VirtualDesktopProviderFault(VirtualDesktopProviderFaultPhase phase, VirtualDesktopProviderEventKind eventKind, Guid? desktopId, string exceptionType, int? nativeErrorCode, long sequence, VirtualDesktopProviderFailureCategory failureCategory = VirtualDesktopProviderFailureCategory.Unknown)
 		{
 			this.Phase = phase;
 			this.EventKind = eventKind;
@@ -165,6 +169,7 @@ namespace WindowsDesktop
 			this.ExceptionType = exceptionType;
 			this.NativeErrorCode = nativeErrorCode;
 			this.Sequence = sequence;
+			this.FailureCategory = failureCategory;
 		}
 
 		public VirtualDesktopProviderFaultPhase Phase { get; }
@@ -173,5 +178,6 @@ namespace WindowsDesktop
 		public string ExceptionType { get; }
 		public int? NativeErrorCode { get; }
 		public long Sequence { get; }
+		public VirtualDesktopProviderFailureCategory FailureCategory { get; }
 	}
 }
