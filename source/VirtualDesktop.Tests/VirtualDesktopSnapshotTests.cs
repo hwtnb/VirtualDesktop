@@ -452,13 +452,13 @@ namespace WindowsDesktop.Tests
 			public HString GetName()
 			{
 				this.NameCalls++;
-				return this._name == null ? default(HString) : new HString(this._name);
+				return this._name == null ? default(HString) : HString.FromManagedOwned(this._name);
 			}
 
 			public HString GetWallpaperPath()
 			{
 				this.WallpaperCalls++;
-				return this._wallpaperPath == null ? default(HString) : new HString(this._wallpaperPath);
+				return this._wallpaperPath == null ? default(HString) : HString.FromManagedOwned(this._wallpaperPath);
 			}
 
 			internal string ReadWrapperName()

@@ -466,7 +466,7 @@ namespace WindowsDesktop.Interop
 		{
 			var value = this.Invoke(methodName);
 			if (value == null) return null;
-			return (HString)value;
+			return ((HString)value).ToManagedAndDispose();
 		}
 
 		private object Invoke(string methodName)

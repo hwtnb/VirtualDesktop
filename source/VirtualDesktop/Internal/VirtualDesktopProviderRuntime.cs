@@ -59,9 +59,15 @@ namespace WindowsDesktop.Internal
 		}
 
 		public void SetDesktopName(VirtualDesktop desktop, string value)
-			=> this._provider.ComObjects.VirtualDesktopManagerInternal.SetDesktopName(desktop, new HString(value));
+		{
+			using (var marshaler = HString.CreateMarshaler(value))
+				this._provider.ComObjects.VirtualDesktopManagerInternal.SetDesktopName(desktop, marshaler.Value);
+		}
 
 		public void SetDesktopWallpaper(VirtualDesktop desktop, string value)
-			=> this._provider.ComObjects.VirtualDesktopManagerInternal.SetDesktopWallpaper(desktop, new HString(value));
+		{
+			using (var marshaler = HString.CreateMarshaler(value))
+				this._provider.ComObjects.VirtualDesktopManagerInternal.SetDesktopWallpaper(desktop, marshaler.Value);
+		}
 	}
 }

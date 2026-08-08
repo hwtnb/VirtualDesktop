@@ -69,11 +69,11 @@ namespace WindowsDesktop
 
 			if (ProductInfo.OSBuild >= 20231 || this.ComVersion >= 2)
 			{
-				this._name = this.Invoke<HString>(Args(), "GetName");
+				this._name = this.Invoke<HString>(Args(), "GetName").ToManagedAndDispose();
 
 				if (ProductInfo.OSBuild >= 21313)
 				{
-					this._wallpaperPath = this.Invoke<HString>(Args(), "GetWallpaperPath");
+					this._wallpaperPath = this.Invoke<HString>(Args(), "GetWallpaperPath").ToManagedAndDispose();
 				}
 			}
 		}

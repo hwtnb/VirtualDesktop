@@ -84,12 +84,12 @@ namespace WindowsDesktop.Interop
 
 		protected void VirtualDesktopRenamedCore(object pDesktop, HString chName)
 		{
-			this.Capture(VirtualDesktopCallbackKind.Renamed, () => this._materializer.Property(VirtualDesktopCallbackKind.Renamed, pDesktop, (string)chName));
+			this.Capture(VirtualDesktopCallbackKind.Renamed, () => this._materializer.Property(VirtualDesktopCallbackKind.Renamed, pDesktop, chName.ToManaged()));
 		}
 
 		protected void VirtualDesktopWallpaperChangedCore(object pDesktop, HString chPath)
 		{
-			this.Capture(VirtualDesktopCallbackKind.WallpaperChanged, () => this._materializer.Property(VirtualDesktopCallbackKind.WallpaperChanged, pDesktop, (string)chPath));
+			this.Capture(VirtualDesktopCallbackKind.WallpaperChanged, () => this._materializer.Property(VirtualDesktopCallbackKind.WallpaperChanged, pDesktop, chPath.ToManaged()));
 		}
 
 		protected void VirtualDesktopSwitchedCore(object pDesktop)
