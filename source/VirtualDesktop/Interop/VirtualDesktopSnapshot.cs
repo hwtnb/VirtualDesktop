@@ -154,15 +154,18 @@ namespace WindowsDesktop.Interop
 		internal ResolvedVirtualDesktopSnapshotInterface(Type interfaceType)
 		{
 			this.InterfaceType = interfaceType;
-			this.HasId = interfaceType.GetMethod("GetID") != null;
-			this.HasName = interfaceType.GetMethod("GetName") != null;
-			this.HasWallpaperPath = interfaceType.GetMethod("GetWallpaperPath") != null;
+			this.IdMethod = interfaceType.GetMethod("GetID");
+			this.NameMethod = interfaceType.GetMethod("GetName");
+			this.WallpaperPathMethod = interfaceType.GetMethod("GetWallpaperPath");
 		}
 
 		internal Type InterfaceType { get; }
-		internal bool HasId { get; }
-		internal bool HasName { get; }
-		internal bool HasWallpaperPath { get; }
+		internal MethodInfo IdMethod { get; }
+		internal MethodInfo NameMethod { get; }
+		internal MethodInfo WallpaperPathMethod { get; }
+		internal bool HasId => this.IdMethod != null;
+		internal bool HasName => this.NameMethod != null;
+		internal bool HasWallpaperPath => this.WallpaperPathMethod != null;
 	}
 
 	internal static class VirtualDesktopSnapshotInterfaceResolver
@@ -408,14 +411,14 @@ namespace WindowsDesktop.Interop
 			if (rawArray == null) return null;
 			var array = rawArray as IVirtualDesktopSnapshotObjectArray
 				?? new ComVirtualDesktopSnapshotObjectArray((IObjectArray)rawArray);
-			return new DynamicComVirtualDesktopSnapshotCollection(array, this._desktopInterface.InterfaceType);
+			return new DynamicComVirtualDesktopSnapshotCollection(array, this._desktopInterface);
 		}
 
 		public Guid GetCurrentDesktopId()
 		{
 			if (!this.Capabilities.CanReadCurrentDesktopId) throw new NotSupportedException("GetCurrentDesktop is not supported.");
 			var comObject = this.InvokeManager("GetCurrentDesktop");
-			return comObject == null ? Guid.Empty : new DynamicComVirtualDesktopSnapshotValueReader(this._desktopInterface.InterfaceType, comObject).GetId();
+			return comObject == null ? Guid.Empty : new DynamicComVirtualDesktopSnapshotValueReader(this._desktopInterface, comObject).GetId();
 		}
 
 		private object InvokeManager(string methodName)
@@ -430,48 +433,47 @@ namespace WindowsDesktop.Interop
 	internal sealed class DynamicComVirtualDesktopSnapshotCollection : IVirtualDesktopSnapshotCollection
 	{
 		private readonly IVirtualDesktopSnapshotObjectArray _array;
-		private readonly Type _desktopType;
+		private readonly ResolvedVirtualDesktopSnapshotInterface _desktopInterface;
 
-		internal DynamicComVirtualDesktopSnapshotCollection(IVirtualDesktopSnapshotObjectArray array, Type desktopType)
+		internal DynamicComVirtualDesktopSnapshotCollection(IVirtualDesktopSnapshotObjectArray array, ResolvedVirtualDesktopSnapshotInterface desktopInterface)
 		{
 			this._array = array;
-			this._desktopType = desktopType;
+			this._desktopInterface = desktopInterface;
 		}
 
 		public int GetCount() => checked((int)this._array.GetCount());
 
 		public IVirtualDesktopSnapshotValueReader GetDesktop(int index)
 		{
-			var comObject = this._array.GetAt(checked((uint)index), this._desktopType.GUID);
-			return comObject == null ? null : new DynamicComVirtualDesktopSnapshotValueReader(this._desktopType, comObject);
+			var comObject = this._array.GetAt(checked((uint)index), this._desktopInterface.InterfaceType.GUID);
+			return comObject == null ? null : new DynamicComVirtualDesktopSnapshotValueReader(this._desktopInterface, comObject);
 		}
 	}
 
 	internal sealed class DynamicComVirtualDesktopSnapshotValueReader : IVirtualDesktopSnapshotValueReader
 	{
-		private readonly Type _desktopType;
+		private readonly ResolvedVirtualDesktopSnapshotInterface _desktopInterface;
 		private readonly object _comObject;
 
-		internal DynamicComVirtualDesktopSnapshotValueReader(Type desktopType, object comObject)
+		internal DynamicComVirtualDesktopSnapshotValueReader(ResolvedVirtualDesktopSnapshotInterface desktopInterface, object comObject)
 		{
-			this._desktopType = desktopType;
+			this._desktopInterface = desktopInterface;
 			this._comObject = comObject;
 		}
 
-		public Guid GetId() => (Guid)this.Invoke("GetID");
-		public string GetName() => this.InvokeString("GetName");
-		public string GetWallpaperPath() => this.InvokeString("GetWallpaperPath");
+		public Guid GetId() => (Guid)this.Invoke(this._desktopInterface.IdMethod, "GetID");
+		public string GetName() => this.InvokeString(this._desktopInterface.NameMethod, "GetName");
+		public string GetWallpaperPath() => this.InvokeString(this._desktopInterface.WallpaperPathMethod, "GetWallpaperPath");
 
-		private string InvokeString(string methodName)
+		private string InvokeString(MethodInfo method, string methodName)
 		{
-			var value = this.Invoke(methodName);
+			var value = this.Invoke(method, methodName);
 			if (value == null) return null;
 			return ((HString)value).ToManagedAndDispose();
 		}
 
-		private object Invoke(string methodName)
+		private object Invoke(MethodInfo method, string methodName)
 		{
-			var method = this._desktopType.GetMethod(methodName);
 			if (method == null) throw new NotSupportedException(methodName + " is not supported.");
 			try
 			{

@@ -34,7 +34,7 @@ namespace WindowsDesktop.Internal
 
 	internal sealed class VirtualDesktopCallbackMaterializer
 	{
-		private readonly Type _desktopType;
+		private readonly MethodInfo _getIdMethod;
 
 		internal VirtualDesktopCallbackMaterializer(ComInterfaceAssembly assembly)
 			: this(VirtualDesktopSnapshotInterfaceResolver.Resolve(new ComAssemblyVirtualDesktopSnapshotInterfaceCatalog(assembly)).InterfaceType)
@@ -43,7 +43,8 @@ namespace WindowsDesktop.Internal
 
 		internal VirtualDesktopCallbackMaterializer(Type desktopType)
 		{
-			this._desktopType = desktopType ?? throw new ArgumentNullException(nameof(desktopType));
+			if (desktopType == null) throw new ArgumentNullException(nameof(desktopType));
+			this._getIdMethod = desktopType.GetMethod("GetID");
 		}
 
 		internal VirtualDesktopCallbackDto One(VirtualDesktopCallbackKind kind, object desktop)
@@ -64,11 +65,10 @@ namespace WindowsDesktop.Internal
 		private Guid ReadId(object desktop)
 		{
 			if (desktop == null) throw new ArgumentNullException(nameof(desktop));
-			var method = this._desktopType.GetMethod("GetID");
-			if (method == null) throw new NotSupportedException("GetID is not resolved.");
+			if (this._getIdMethod == null) throw new NotSupportedException("GetID is not resolved.");
 			try
 			{
-				var id = (Guid)method.Invoke(desktop, null);
+				var id = (Guid)this._getIdMethod.Invoke(desktop, null);
 				if (id == Guid.Empty) throw new InvalidOperationException("A callback desktop ID was empty.");
 				return id;
 			}
