@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -10,6 +10,23 @@ namespace WindowsDesktop
 {
 	public partial class VirtualDesktopProvider
 	{
+		// Reconciliation owns the raw OS mirror. Its ordered pipeline is:
+		// callback ingress -> dirty/coalesce -> raw capture -> stable batch publication.
+		//
+		// Invariants:
+		// - Fields below are read or changed under _reconciliationGate. COM calls and
+		//   subscriber callbacks never run while that gate is held.
+		// - At most one capture is scheduled or running. IngressRevision identifies the
+		//   work a capture must cover; SnapshotRevision advances only for an accepted,
+		//   stable capture.
+		// - ProviderEpoch invalidates callbacks, wrappers, pending writes, empty
+		//   candidates, retries, and waiters from a previous Explorer runtime.
+		// - Dirty is cleared only when a capture for the current epoch and target ingress
+		//   revision is accepted. Local setters and in-flight publications defer capture
+		//   rather than allowing an intermediate state to become stable.
+		// - A pending local write is acknowledged only by the matching OS value. A
+		//   confirmed non-empty property requires two consecutive successful empty reads
+		//   before an empty value is published.
 		private readonly object _reconciliationGate = new object();
 		private IVirtualDesktopSnapshotCapture _snapshotCapture;
 		private IReconciliationDelayScheduler _delayScheduler;
