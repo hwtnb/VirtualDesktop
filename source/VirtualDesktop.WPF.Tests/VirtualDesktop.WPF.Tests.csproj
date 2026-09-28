@@ -4,6 +4,7 @@
 		<Platforms>x86;x64</Platforms>
 		<UseWPF>true</UseWPF>
 		<IsPackable>false</IsPackable>
+		<IsTestingPlatformApplication>false</IsTestingPlatformApplication>
 		<OutputType>Exe</OutputType>
 		<AssemblyName>VirtualDesktop.WPF.Tests</AssemblyName>
 		<RootNamespace>WindowsDesktop.WPF.Tests</RootNamespace>
@@ -18,8 +19,8 @@
 		<DefineConstants>$(DefineConstants);EXPECTED_X64</DefineConstants>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="xunit.v3" Version="3.2.2" />
-		<PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+		<PackageReference Include="xunit.v3" Version="4.0.1" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
 	</ItemGroup>
 	<ItemGroup>
