@@ -4,7 +4,6 @@
 		<Platforms>x86;x64</Platforms>
 		<UseWPF>true</UseWPF>
 		<IsPackable>false</IsPackable>
-		<IsTestingPlatformApplication>false</IsTestingPlatformApplication>
 		<OutputType>Exe</OutputType>
 		<AssemblyName>VirtualDesktop.WPF.Tests</AssemblyName>
 		<RootNamespace>WindowsDesktop.WPF.Tests</RootNamespace>
