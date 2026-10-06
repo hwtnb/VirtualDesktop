@@ -50,6 +50,20 @@ namespace WindowsDesktop.Interop
 			this.Invoke(Args(desktop.ComObject));
 		}
 
+		// SwitchDesktopWithAnimation exists only in IVirtualDesktopManagerInternal2 (Windows 11 22621.2215 or later).
+		public override bool IsSwitchAnimationSupported => this.ComVersion >= 2;
+
+		public override void SwitchDesktopWithAnimation(VirtualDesktop desktop)
+		{
+			if (!this.IsSwitchAnimationSupported)
+			{
+				this.SwitchDesktop(desktop);
+				return;
+			}
+
+			this.Invoke(Args(desktop.ComObject));
+		}
+
 		public override VirtualDesktop CreateDesktopW()
 		{
 			return this.GetDesktop(Args());

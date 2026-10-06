@@ -22,6 +22,13 @@ namespace WindowsDesktop.Interop
 
 		public abstract void SwitchDesktop(VirtualDesktop desktop);
 
+		public virtual bool IsSwitchAnimationSupported => false;
+
+		public virtual void SwitchDesktopWithAnimation(VirtualDesktop desktop)
+		{
+			this.SwitchDesktop(desktop);
+		}
+
 		public abstract VirtualDesktop CreateDesktopW();
 
 		public abstract void MoveDesktop(VirtualDesktop desktop, int index);

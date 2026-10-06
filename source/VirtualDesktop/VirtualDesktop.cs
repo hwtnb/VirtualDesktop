@@ -91,6 +91,15 @@ namespace WindowsDesktop
 		/// </summary>
 		public void Switch()
 		{
+			this.Switch(false);
+		}
+
+		/// <summary>
+		/// Switches to this virtual desktop, optionally playing the slide animation of the Windows shell.
+		/// </summary>
+		/// <param name="animation">true to play the animation when the OS supports it (Windows 11 22621.2215 or later).</param>
+		public void Switch(bool animation)
+		{
 			var current = ComInterface.VirtualDesktopManagerInternal.GetCurrentDesktop();
 			if (this == current) return;
 
@@ -104,7 +113,7 @@ namespace WindowsDesktop
 				|| currentHandle == VirtualDesktopCache.TaskbarHandle
 				|| NativeMethods.GetClassName(currentHandle) == NativeMethods.TaskViewClassName)
 			{
-				ComInterface.VirtualDesktopManagerInternal.SwitchDesktop(this);
+				SwitchDesktopCore(this, animation);
 				return;
 			}
 
@@ -114,7 +123,7 @@ namespace WindowsDesktop
 				NativeMethods.ForceSendActivationMessage(immersiveShellHandle, currentHandle);
 			}
 
-			ComInterface.VirtualDesktopManagerInternal.SwitchDesktop(this);
+			SwitchDesktopCore(this, animation);
 
 			// The target desktop is now current, so its windows are at the front of the Z-order.
 			// Searching here (instead of before the switch) lets EnumWindows short-circuit on the
@@ -128,6 +137,25 @@ namespace WindowsDesktop
 					NativeMethods.ForceSetForegroundWindow(targetHandle, foregroundHandle);
 				}
 			}
+		}
+
+		private static void SwitchDesktopCore(VirtualDesktop desktop, bool animation)
+		{
+			var manager = ComInterface.VirtualDesktopManagerInternal;
+			if (animation && manager.IsSwitchAnimationSupported)
+			{
+				try
+				{
+					manager.SwitchDesktopWithAnimation(desktop);
+					return;
+				}
+				catch (Exception ex) when (ex is COMException || ex is NotSupportedException)
+				{
+					// Fall back to switching without animation.
+				}
+			}
+
+			manager.SwitchDesktop(desktop);
 		}
 
 		/// <summary>
